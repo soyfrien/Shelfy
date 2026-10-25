@@ -132,3 +132,7 @@ Verify with a TEST shelf only (never a real one): create guest and shelf, upload
 (then `/s/{id}`, `GET /api/shelves/{id}` and uploads answer 404; the rows and the photo stay), then a second shelf with `DELETE /api/shelves/{id}`
 (the shelf, `ShelfBooks`, `RecognitionJobs`, `DetectedSpines` and `/var/lib/shelfy/photos/shelves/<id>` are gone; `Books` stays). Delete the hidden test shelf
 afterwards with `DELETE` too. To restore a hidden shelf by hand: `UPDATE "Shelves" SET "IsHidden" = false, "HiddenAt" = NULL WHERE "Id" = '<id>';`.
+
+Deployed on cosmic2 on 2026-10-25 and verified live: hide (API and the mobile UI) gives 404 on `/api/shelves/{id}`, `/s/{id}`, job status and uploads while rows and the photo stay;
+delete (API and UI) leaves no `Shelves`, `ShelfBooks`, `RecognitionJobs`, `DetectedSpines` rows and no photo folder; `Books` rows stay; hide and delete are idempotent
+(204 twice); deleting a hidden shelf works. Test data was removed afterwards.
