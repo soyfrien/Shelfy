@@ -2,3 +2,4 @@
 *.cs text diff=csharp
 *.md text
 *.sh text eol=lf
+db/*.sh text eol=lf

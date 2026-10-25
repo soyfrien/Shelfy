@@ -99,3 +99,94 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025142242_AddRecognitionPipeline') THEN
+    CREATE TABLE "RecognitionJobs" (
+        "Id" uuid NOT NULL,
+        "ShelfId" uuid NOT NULL,
+        "PhotoKey" character varying(300) NOT NULL,
+        "ContentType" character varying(50) NOT NULL,
+        "SizeBytes" bigint NOT NULL,
+        "PhotoSha256" character varying(64) NOT NULL,
+        "Status" character varying(20) NOT NULL,
+        "Attempts" integer NOT NULL,
+        "MaxAttempts" integer NOT NULL,
+        "NextAttemptAt" timestamp with time zone NOT NULL,
+        "LockedUntil" timestamp with time zone,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "UpdatedAt" timestamp with time zone NOT NULL,
+        "StartedAt" timestamp with time zone,
+        "CompletedAt" timestamp with time zone,
+        "Error" character varying(2000),
+        "BooksAdded" integer NOT NULL,
+        CONSTRAINT "PK_RecognitionJobs" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_RecognitionJobs_Shelves_ShelfId" FOREIGN KEY ("ShelfId") REFERENCES "Shelves" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025142242_AddRecognitionPipeline') THEN
+    CREATE TABLE "DetectedSpines" (
+        "Id" uuid NOT NULL,
+        "RecognitionJobId" uuid NOT NULL,
+        "Position" integer NOT NULL,
+        "RawText" character varying(1000) NOT NULL,
+        "Confidence" double precision,
+        "CandidateTitle" character varying(500) NOT NULL,
+        "CandidateAuthor" character varying(300),
+        "CandidateIsbn" character varying(20),
+        "Status" character varying(20) NOT NULL,
+        "BookId" uuid,
+        "ResolvedIsbn" character varying(20),
+        "MatchScore" double precision,
+        "MatchSource" character varying(30),
+        CONSTRAINT "PK_DetectedSpines" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_DetectedSpines_Books_BookId" FOREIGN KEY ("BookId") REFERENCES "Books" ("Id") ON DELETE SET NULL,
+        CONSTRAINT "FK_DetectedSpines_RecognitionJobs_RecognitionJobId" FOREIGN KEY ("RecognitionJobId") REFERENCES "RecognitionJobs" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025142242_AddRecognitionPipeline') THEN
+    CREATE INDEX "IX_DetectedSpines_BookId" ON "DetectedSpines" ("BookId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025142242_AddRecognitionPipeline') THEN
+    CREATE INDEX "IX_DetectedSpines_RecognitionJobId" ON "DetectedSpines" ("RecognitionJobId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025142242_AddRecognitionPipeline') THEN
+    CREATE INDEX "IX_RecognitionJobs_ShelfId_PhotoSha256" ON "RecognitionJobs" ("ShelfId", "PhotoSha256");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025142242_AddRecognitionPipeline') THEN
+    CREATE INDEX "IX_RecognitionJobs_Status_NextAttemptAt" ON "RecognitionJobs" ("Status", "NextAttemptAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025142242_AddRecognitionPipeline') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025142242_AddRecognitionPipeline', '8.0.32');
+    END IF;
+END $EF$;
+COMMIT;
+
