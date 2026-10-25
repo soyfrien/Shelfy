@@ -51,3 +51,15 @@ curl http://127.0.0.1:5080/health
 ```
 
 Limits: `MemoryMax=300M`. Swagger is only served when `ASPNETCORE_ENVIRONMENT=Development`.
+
+## 4. Public HTTPS (shelfy.ppdac.ltd)
+
+`deploy/nginx-shelfy.ppdac.ltd.conf` is a standalone nginx server block (install as
+`/etc/nginx/sites-available/shelfy.ppdac.ltd`, symlink into `sites-enabled`, `nginx -t`, then reload).
+It proxies to `127.0.0.1:5080`, allows 25 MB bodies and rate-limits to 10 req/s per IP.
+Port 80 listens on the VM's private IPs (matching the other sites). After the DNS A record points
+at the VM's public IP, issue the certificate with:
+
+```bash
+certbot --nginx -d shelfy.ppdac.ltd --non-interactive --agree-tos -m louis@ppdac.ltd --redirect
+```
