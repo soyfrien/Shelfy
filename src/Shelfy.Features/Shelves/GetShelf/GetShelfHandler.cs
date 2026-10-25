@@ -14,7 +14,7 @@ public class GetShelfHandler(ShelfyDbContext db)
             .Include(s => s.Books).ThenInclude(sb => sb.Book)
             .FirstOrDefaultAsync(s => s.Id == request.ShelfId, ct);
 
-        if (shelf is null)
+        if (shelf is null || shelf.IsHidden)
         {
             return HandlerResult<GetShelfResponse>.NotFound("Shelf not found.");
         }

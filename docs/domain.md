@@ -44,6 +44,7 @@ public class Shelf
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public bool IsHidden { get; set; }       // soft-cleared (ADR-010); HiddenAt (UTC) says when
     public ICollection<ShelfBook> Books { get; set; } = new List<ShelfBook>();
 }
 
@@ -80,6 +81,7 @@ Later entities: `Trade`, `Loan`, `Listing`, `Recommendation`. Define them in `do
 - A Book exists once. ShelfBook links a Shelf to a Book.
 - `SalePrice` is only meaningful when `Status` is `Sale`.
 - New books default to `Private`.
+- A hidden shelf is treated as not existing by the public API; deleting a shelf removes its links, jobs, spines and photos but never `Books` (ADR-010).
 - In v1 every ShelfBook is effectively Private; the shared public page shows the shelf only.
 
 ## Planned tables

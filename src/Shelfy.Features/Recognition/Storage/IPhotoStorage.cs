@@ -12,4 +12,10 @@ public interface IPhotoStorage
 
     /// <summary>Deletes the photo if present.</summary>
     Task DeleteAsync(string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes every photo under a key prefix such as <c>shelves/{shelfId}</c> (used when a shelf is deleted, to also catch a
+    /// photo uploaded at the very moment of deletion). Optional: stores without folders may leave the default, which does nothing.
+    /// </summary>
+    Task DeleteFolderAsync(string prefix, CancellationToken ct = default) => Task.CompletedTask;
 }

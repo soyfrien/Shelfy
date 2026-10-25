@@ -59,6 +59,26 @@ public class LocalFileSystemPhotoStorage : IPhotoStorage
         return Task.CompletedTask;
     }
 
+    public Task DeleteFolderAsync(string prefix, CancellationToken ct = default)
+    {
+        var folder = Resolve(prefix.TrimEnd('/'));
+        try
+        {
+            if (Directory.Exists(folder))
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+
+        return Task.CompletedTask;
+    }
+
     private string Resolve(string key)
     {
         if (string.IsNullOrWhiteSpace(key) || key.Contains("..") || key.Contains('\\') || key.StartsWith('/') || key.Contains('\0'))

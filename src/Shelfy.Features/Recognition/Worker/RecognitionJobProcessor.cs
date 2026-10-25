@@ -34,6 +34,11 @@ public class RecognitionJobProcessor(
             ?? throw new RecognitionException("Recognition job no longer exists.", isRetryable: false);
         var shelf = await db.Shelves.Include(s => s.Books).FirstOrDefaultAsync(s => s.Id == job.ShelfId, ct)
             ?? throw new RecognitionException("The shelf for this job no longer exists.", isRetryable: false);
+        if (shelf.IsHidden)
+        {
+            // The owner cleared the shelf while the photo was waiting: do not read it, spend no OCR call, add nothing.
+            throw new RecognitionException("The shelf was cleared before this photo was read.", isRetryable: false);
+        }
 
         OcrResult ocr;
         try
@@ -162,7 +167,20 @@ public class RecognitionJobProcessor(
 
         job.BooksAdded = added;
         job.UpdatedAt = clock.GetUtcNow().UtcDateTime;
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // If the shelf was deleted while this photo was being read, nothing was saved: fail quietly, without a retry.
+            if (await ShelfGoneAsync(job.ShelfId, jobId))
+            {
+                throw new RecognitionException("The shelf was cleared while this photo was being read.", isRetryable: false);
+            }
+
+            throw;
+        }
 
         if (dropped > 0)
         {
@@ -170,6 +188,14 @@ public class RecognitionJobProcessor(
         }
 
         return new ProcessingSummary(candidates.Count, resolved, added, dropped);
+    }
+
+    /// <summary>True when the job's shelf was hard-deleted (the job went with it) or hidden since the job was loaded.</summary>
+    private async Task<bool> ShelfGoneAsync(Guid shelfId, Guid jobId)
+    {
+        db.ChangeTracker.Clear();
+        return !await db.RecognitionJobs.AsNoTracking().AnyAsync(j => j.Id == jobId, CancellationToken.None) ||
+               !await db.Shelves.AsNoTracking().AnyAsync(s => s.Id == shelfId && !s.IsHidden, CancellationToken.None);
     }
 
     /// <summary>

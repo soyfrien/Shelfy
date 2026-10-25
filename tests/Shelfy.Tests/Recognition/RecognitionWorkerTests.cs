@@ -349,4 +349,37 @@ public class RecognitionWorkerTests
 
         Assert.False(await h.Worker.RunOnceAsync(CancellationToken.None));
     }
+
+    /// <summary>Deletes the shelf of the job while "OCR" runs, like a user pressing "Delete everything" mid-read.</summary>
+    private sealed class DeletesShelfDuringOcr(PipelineHarness h, Guid shelfId) : ITextRecognizer
+    {
+        public async Task<OcrResult> RecognizeAsync(Stream image, string contentType, CancellationToken ct = default)
+        {
+            await using var db = h.Database.CreateContext();
+            var spines = db.DetectedSpines.Where(s => db.RecognitionJobs.Any(j => j.Id == s.RecognitionJobId && j.ShelfId == shelfId));
+            db.DetectedSpines.RemoveRange(spines);
+            db.RecognitionJobs.RemoveRange(db.RecognitionJobs.Where(j => j.ShelfId == shelfId));
+            db.Shelves.RemoveRange(db.Shelves.Where(s => s.Id == shelfId));
+            await db.SaveChangesAsync(ct);
+            return ScriptedRecognizer.Lines("THE HOBBIT", "J.R.R. TOLKIEN");
+        }
+    }
+
+    [Fact]
+    public async Task A_Shelf_Deleted_During_Processing_Does_Not_Resurrect_Anything_And_The_Worker_Carries_On()
+    {
+        using var h = Harness();
+        var (shelfId, jobId) = await h.SeedJobAsync();
+        h.Recognizer = new DeletesShelfDuringOcr(h, shelfId);
+
+        var worked = await h.Worker.RunOnceAsync(CancellationToken.None);
+
+        Assert.True(worked);
+        await using var db = h.Database.CreateContext();
+        Assert.False(await db.RecognitionJobs.AnyAsync(j => j.Id == jobId));
+        Assert.False(await db.Shelves.AnyAsync(s => s.Id == shelfId));
+        Assert.False(await db.ShelfBooks.AnyAsync(sb => sb.ShelfId == shelfId));
+        Assert.False(await db.DetectedSpines.AnyAsync());
+        Assert.False(await h.Worker.RunOnceAsync(CancellationToken.None)); // queue is empty, no retry loop
+    }
 }

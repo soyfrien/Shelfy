@@ -9,6 +9,27 @@ public class Shelf
     /// <summary>Public sharing is off by default (docs/requirements/public-shelf-page.md).</summary>
     public bool IsPublic { get; set; }
 
+    /// <summary>
+    /// Soft-cleared by its owner ("Hide shelf", ADR-010): the shelf and its data are kept but it is no longer shown, shared or
+    /// accepting photos. Reversible by an operator (clear the flag), never by the public API.
+    /// </summary>
+    public bool IsHidden { get; set; }
+
+    /// <summary>When the shelf was hidden (UTC); null while visible.</summary>
+    public DateTime? HiddenAt { get; set; }
+
+    /// <summary>Hides the shelf. Calling it again keeps the original hidden time.</summary>
+    public void Hide(DateTime nowUtc)
+    {
+        if (IsHidden)
+        {
+            return;
+        }
+
+        IsHidden = true;
+        HiddenAt = nowUtc;
+    }
+
     public ICollection<ShelfBook> Books { get; set; } = new List<ShelfBook>();
 
     /// <summary>Adds a book as Private. A book can only be on a shelf once.</summary>

@@ -35,6 +35,21 @@ public class WebUiTests : IDisposable
         Assert.Contains("/app.js", html);
     }
 
+    [Fact]
+    public async Task Home_Page_Has_The_Clear_Shelf_Flow_With_Hide_As_The_Default_Choice()
+    {
+        var html = await _client.GetStringAsync("/");
+
+        Assert.Contains("id=\"clearBtn\"", html);
+        Assert.Contains("id=\"clearModal\"", html);
+        Assert.True(html.IndexOf("id=\"hideBtn\"", StringComparison.Ordinal) < html.IndexOf("id=\"deleteBtn\"", StringComparison.Ordinal),
+            "the safe option comes first");
+        Assert.Contains("class=\"btn danger\" id=\"deleteBtn\"", html);
+        var js = await _client.GetStringAsync("/app.js");
+        Assert.Contains("/hide'", js);
+        Assert.Contains("api('DELETE'", js);
+    }
+
     [Theory]
     [InlineData("/app.js", "javascript")]
     [InlineData("/shared.js", "javascript")]

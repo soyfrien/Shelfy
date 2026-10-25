@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Shelfy.Features.Shelves.CreateShelf;
+using Shelfy.Features.Shelves.DeleteShelf;
 using Shelfy.Features.Shelves.GetShelf;
+using Shelfy.Features.Shelves.HideShelf;
 using Shelfy.Features.Shelves.ShelfPage;
 
 namespace Shelfy.Features.Shelves;
@@ -12,9 +14,11 @@ public static class ShelvesModule
     {
         services.AddScoped<CreateShelfHandler>();
         services.AddScoped<GetShelfHandler>();
+        services.AddScoped<HideShelfHandler>();
+        services.AddScoped<DeleteShelfHandler>();
         return services;
     }
 
     public static IEndpointRouteBuilder MapShelvesModule(this IEndpointRouteBuilder app) =>
-        app.MapCreateShelf().MapGetShelf().MapShelfPage();
+        app.MapCreateShelf().MapGetShelf().MapHideShelf().MapDeleteShelf().MapShelfPage();
 }

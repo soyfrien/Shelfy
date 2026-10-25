@@ -14,14 +14,15 @@
     bar: $('bar'), barWrap: $('barWrap'), errorBox: $('errorBox'), errorTitle: $('errorTitle'), errorText: $('errorText'),
     result: $('result'), resultTitle: $('resultTitle'), resultNote: $('resultNote'), books: $('books'),
     unresolvedWrap: $('unresolvedWrap'), unresolved: $('unresolved'), shareLink: $('shareLink'), copyBtn: $('copyBtn'),
-    file: $('file'), newShelf: $('newShelf'), addMore: $('addMore'), parts: $('parts'), partErrors: $('partErrors')
+    file: $('file'), newShelf: $('newShelf'), clearBtn: $('clearBtn'), clearModal: $('clearModal'), hideBtn: $('hideBtn'),
+    deleteBtn: $('deleteBtn'), cancelClear: $('cancelClear'), clearError: $('clearError'), clearedNote: $('clearedNote'), clearedText: $('clearedText'), addMore: $('addMore'), parts: $('parts'), partErrors: $('partErrors')
   };
   var busy = false;
   var run = null;   // the batch being processed: { shelfId, batchId, n, parts[], ... }
 
   // While photos are being read, the buttons that start another photo or a new shelf are switched off.
   function lockUi(on) {
-    els.file.disabled = on; els.addMore.classList.toggle('disabled', on); els.newShelf.disabled = on;
+    els.file.disabled = on; els.addMore.classList.toggle('disabled', on); els.newShelf.disabled = on; els.clearBtn.disabled = on;
   }
   function show(el, on) { el.classList.toggle('hidden', !on); }
   function ls(k, v) {
@@ -357,7 +358,7 @@
     busy = true; lockUi(true);
     if (run) run.aborted = true;
     run = null;
-    show(els.errorBox, false); show(els.result, false); show(els.pick, false);
+    show(els.errorBox, false); show(els.result, false); show(els.pick, false); show(els.clearedNote, false);
     show(els.parts, false); show(els.partErrors, false);
     show(els.progress, true);
     show(els.preview, false);
@@ -397,6 +398,55 @@
     show(els.pick, true);
     window.scrollTo(0, 0);
   });
+  // ---- clear shelf: "Hide" (soft, default) or "Delete everything" (hard), see ADR-010 ----
+  var clearing = false, clearFocus = null;
+  function openClear() {
+    if (busy || !ls(KEY_SHELF)) return;
+    show(els.clearError, false); clearFocus = document.activeElement;
+    setClearBusy(false);
+    show(els.clearModal, true);
+    els.hideBtn.focus();
+  }
+  function closeClear() {
+    if (clearing) return;
+    show(els.clearModal, false);
+    if (clearFocus && clearFocus.focus) clearFocus.focus();
+  }
+  function setClearBusy(on) {
+    clearing = on; els.hideBtn.disabled = on; els.deleteBtn.disabled = on; els.cancelClear.disabled = on;
+  }
+  function clearShelf(hard) {
+    var id = ls(KEY_SHELF);
+    if (!id || clearing) return;
+    setClearBusy(true); show(els.clearError, false);
+    var req = hard ? api('DELETE', '/api/shelves/' + id) : api('POST', '/api/shelves/' + id + '/hide');
+    req.catch(function (e) { if (e.status === 404) return null; throw e; }).then(function () {
+      setClearBusy(false);
+      if (run) run.aborted = true;
+      run = null;
+      ls(KEY_SHELF, null);
+      show(els.clearModal, false);
+      show(els.result, false); show(els.progress, false); show(els.errorBox, false);
+      show(els.pick, true);
+      els.books.textContent = ''; els.unresolved.textContent = '';
+      els.clearedText.textContent = hard ? 'Deleted: the shelf and its photos are gone.' : 'Hidden: it is no longer shown or shared.';
+      show(els.clearedNote, true);
+      window.scrollTo(0, 0);
+    }, function (e) {
+      setClearBusy(false);
+      els.clearError.textContent = e.status === 0 || e instanceof TypeError
+        ? 'No connection. Nothing was changed, please try again.'
+        : 'Something went wrong. Nothing was changed, please try again.';
+      show(els.clearError, true);
+    });
+  }
+  els.clearBtn.addEventListener('click', openClear);
+  els.cancelClear.addEventListener('click', closeClear);
+  els.hideBtn.addEventListener('click', function () { clearShelf(false); });
+  els.deleteBtn.addEventListener('click', function () { clearShelf(true); });
+  els.clearModal.addEventListener('click', function (e) { if (e.target === els.clearModal) closeClear(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !els.clearModal.classList.contains('hidden')) closeClear(); });
+
   els.copyBtn.addEventListener('click', function () {
     var link = els.shareLink.href;
     (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () {

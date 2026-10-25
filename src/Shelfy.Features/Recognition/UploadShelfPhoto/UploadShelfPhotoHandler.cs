@@ -32,7 +32,7 @@ public class UploadShelfPhotoHandler(
                 $"With a batchId, 'part' and 'parts' are required: 1 <= part <= parts <= {UploadShelfPhotoRequest.MaxParts}.");
         }
 
-        if (!await db.Shelves.AnyAsync(s => s.Id == request.ShelfId, ct))
+        if (!await db.Shelves.AnyAsync(s => s.Id == request.ShelfId && !s.IsHidden, ct))
         {
             return HandlerResult<UploadShelfPhotoResponse>.NotFound("Shelf not found.");
         }

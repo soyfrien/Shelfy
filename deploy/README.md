@@ -120,3 +120,15 @@ No new configuration is required. Optional: `AzureVision__MinIntervalMillisecond
 End-to-end check: `python3 tools/make-test-shelf.py --wide --tiles` writes `wide-shelf.jpg`, `wide-shelf.json` (expected books) and the four tiles;
 upload the tiles with the same `batchId`, `part` and `parts` (or use the web UI with `wide-shelf.jpg`) and poll `GET /api/shelves/{id}/batches/{batchId}`.
 Delete the test rows afterwards (`RecognitionJobs`, `Shelves`, `Users` and the photo folder of that shelf under `/var/lib/shelfy/photos`).
+
+## 8. Clear shelf: hide and delete (ADR-010)
+
+Adds the migration `AddShelfHidden` (`Shelves.IsHidden boolean NOT NULL DEFAULT false`, `Shelves.HiddenAt timestamptz NULL`), additive and
+harmless to the previous build. Order: apply `db/schema.idempotent.sql` first, then deploy the new build (delta: the four `Shelfy.*.dll`,
+`Shelfy.Api.deps.json` and `wwwroot/` `app.js`, `index.html`, `style.css`, 139 KB, two `az vm run-command` chunks). No new configuration.
+Rollback: `/opt/shelfy.old` still works with the new columns.
+
+Verify with a TEST shelf only (never a real one): create guest and shelf, upload `python3 tools/make-test-shelf.py` output, `POST /api/shelves/{id}/hide`
+(then `/s/{id}`, `GET /api/shelves/{id}` and uploads answer 404; the rows and the photo stay), then a second shelf with `DELETE /api/shelves/{id}`
+(the shelf, `ShelfBooks`, `RecognitionJobs`, `DetectedSpines` and `/var/lib/shelfy/photos/shelves/<id>` are gone; `Books` stays). Delete the hidden test shelf
+afterwards with `DELETE` too. To restore a hidden shelf by hand: `UPDATE "Shelves" SET "IsHidden" = false, "HiddenAt" = NULL WHERE "Id" = '<id>';`.

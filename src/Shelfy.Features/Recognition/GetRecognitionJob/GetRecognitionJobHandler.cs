@@ -10,7 +10,8 @@ public class GetRecognitionJobHandler(ShelfyDbContext db)
     // TODO(ADR-006): only the shelf owner may read a job once authentication exists.
     public async Task<HandlerResult<RecognitionJobResponse>> HandleAsync(Guid jobId, CancellationToken ct = default)
     {
-        var job = await db.RecognitionJobs.AsNoTracking().FirstOrDefaultAsync(j => j.Id == jobId, ct);
+        var job = await db.RecognitionJobs.AsNoTracking()
+            .FirstOrDefaultAsync(j => j.Id == jobId && !db.Shelves.Any(s => s.Id == j.ShelfId && s.IsHidden), ct);
         if (job is null)
         {
             return HandlerResult<RecognitionJobResponse>.NotFound("Recognition job not found.");

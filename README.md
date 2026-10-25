@@ -53,7 +53,9 @@ src/
   Shelfy.Features         Vertical slices, one folder per module
     Users/                  module placeholder (no slices yet)
     Shelves/CreateShelf     POST /api/shelves
-    Shelves/GetShelf        GET  /api/shelves/{shelfId}
+    Shelves/GetShelf        GET  /api/shelves/{shelfId}   (404 for a hidden shelf)
+    Shelves/HideShelf       POST /api/shelves/{shelfId}/hide   (soft clear, 204, idempotent, ADR-010)
+    Shelves/DeleteShelf     DELETE /api/shelves/{shelfId}      (hard clear incl. photo files, 204, idempotent, ADR-010)
     Books/SearchBooks       GET  /api/books/search?q=...&take=20
     Recognition/
       UploadShelfPhoto      POST /api/shelves/{shelfId}/photos   (multipart "file", 202 + job id)
@@ -125,7 +127,10 @@ A plain HTML/CSS/JS page (no build step) is served by the API from `src/Shelfy.A
   (`POST /api/guests`, `POST /api/shelves`), uploads the tiles with a shared batch id, and polls the batch: "Reading part k of n", a progress bar,
   the shelf filling up as parts complete, a Retry button for a part that failed, then the books and the spines that could not be matched.
   The guest id and shelf id are kept in `localStorage`. `node tools/test-tiles.js` checks the tiling plan.
-- `/s/{shelfId}` shareable shelf page (title, author, cover grid, link-preview tags; unknown shelf gives a 404 page).
+- "Clear shelf" (under the books): a bottom sheet offers **Hide shelf** (default: the shelf is no longer shown or shared, data is kept) or
+  **Delete everything** (red: books on the shelf, detected spines, jobs and stored photos are erased; the shared Books catalog stays).
+  Afterwards the page forgets the shelf and starts fresh with a "Shelf cleared" note ([ADR-010](docs/adr/ADR-010-clearing-a-shelf-hide-or-delete.md)).
+- `/s/{shelfId}` shareable shelf page (title, author, cover grid, link-preview tags; unknown, hidden or deleted shelf gives a 404 page).
   Public sharing is not switchable yet: `IsPublic` is not enforced because the API is open (see ADR-006).
 
 ## Status

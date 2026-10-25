@@ -24,6 +24,8 @@
     </ul>
   </section>
 
+  <div class="cleared hidden" id="clearedNote" role="status"><strong>Shelf cleared</strong><span id="clearedText"></span></div>
+
   <section class="card hidden" id="progress" aria-live="polite">
     <img class="preview hidden" id="preview" alt="Your photo">
     <div class="status"><div class="spinner" id="spinner"></div><div id="statusText">Starting…</div></div>
@@ -56,9 +58,20 @@
     </div>
     <label class="btn secondary" id="addMore" for="file" style="margin-top:12px">📷 Add another photo to this shelf</label>
     <div style="text-align:center"><button class="link" id="newShelf" type="button">Start a new shelf</button></div>
+    <div style="text-align:center"><button class="link clear-link" id="clearBtn" type="button">🗑 Clear shelf…</button></div>
   </section>
 
   <footer>Shelfy is an early test. Anyone with your shelf link can see it.</footer>
+</div>
+<div class="modal hidden" id="clearModal" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+  <div class="sheet">
+    <h2 id="clearTitle">Clear this shelf?</h2>
+    <p class="notice" id="clearIntro">Choose what should happen to it. Either way you start fresh here.</p>
+    <button class="btn" id="hideBtn" type="button">Hide shelf <small>Recommended. Not shown or shared any more, nothing is erased.</small></button>
+    <button class="btn danger" id="deleteBtn" type="button">Delete everything <small>Erases the books on it, what was read from your photos, and the photos themselves. Can't be undone.</small></button>
+    <div class="parterr hidden" id="clearError" role="alert"></div>
+    <div style="text-align:center"><button class="link" id="cancelClear" type="button">Cancel</button></div>
+  </div>
 </div>
 <script src="/shared.js"></script>
 <script src="/tiles.js"></script>

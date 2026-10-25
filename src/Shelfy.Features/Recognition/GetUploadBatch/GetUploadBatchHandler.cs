@@ -11,6 +11,12 @@ public class GetUploadBatchHandler(ShelfyDbContext db)
     // TODO(ADR-006): only the shelf owner may read a batch once authentication exists.
     public async Task<HandlerResult<UploadBatchResponse>> HandleAsync(Guid shelfId, Guid batchId, CancellationToken ct = default)
     {
+        // A hidden shelf is gone as far as the public API is concerned (ADR-010).
+        if (!await db.Shelves.AsNoTracking().AnyAsync(s => s.Id == shelfId && !s.IsHidden, ct))
+        {
+            return HandlerResult<UploadBatchResponse>.NotFound("Batch not found.");
+        }
+
         var allJobs = await db.RecognitionJobs.AsNoTracking()
             .Where(j => j.ShelfId == shelfId && j.BatchId == batchId)
             .ToListAsync(ct);

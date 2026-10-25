@@ -76,6 +76,16 @@ public class InMemoryPhotoStorage : IPhotoStorage
         Files.Remove(key);
         return Task.CompletedTask;
     }
+
+    public Task DeleteFolderAsync(string prefix, CancellationToken ct = default)
+    {
+        foreach (var key in Files.Keys.Where(k => k.StartsWith(prefix.TrimEnd('/') + "/", StringComparison.Ordinal)).ToList())
+        {
+            Files.Remove(key);
+        }
+
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>Answers lookups from a dictionary keyed by candidate title (case-insensitive).</summary>

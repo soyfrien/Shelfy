@@ -40,6 +40,15 @@ GET /api/shelves/{shelfId}/batches/{batchId}   progress per part + merged, de-du
 | POST | `/api/shelves/{shelfId}/photos` | 202 with `{ jobId, status, statusUrl, duplicate }`; 400 no file; 404 unknown shelf; 413 over 20 MB; 415 not JPEG/PNG or wrong content type |
 | GET | `/api/recognition-jobs/{jobId}` | 200 job; 404 unknown job |
 | GET | `/api/shelves/{shelfId}/batches/{batchId}` | 200 batch progress; 404 unknown batch (or batch of another shelf) |
+| POST | `/api/shelves/{shelfId}/hide` | 204 (also when already hidden); 404 unknown shelf. Soft clear, see below |
+| DELETE | `/api/shelves/{shelfId}` | 204 always (also for an unknown or already deleted shelf). Hard clear, see below |
+
+A **hidden** shelf behaves like an unknown one for the public API: `GET /api/shelves/{id}`, `/s/{id}`, uploads (404 `Shelf not found.`),
+batch progress and job status all answer 404. Nothing is erased; an operator can restore it with `UPDATE "Shelves" SET "IsHidden" = false, "HiddenAt" = NULL WHERE "Id" = '...'`.
+**Delete** removes the shelf's `ShelfBooks`, `RecognitionJobs`, `DetectedSpines` and stored photos (every file under `shelves/{shelfId}`);
+`Books` (shared catalog) and the anonymous `Users` row stay. Effect on in-flight work: a job still `Pending` on a hidden shelf is not read
+(no OCR call) and fails once with "The shelf was cleared before this photo was read." (permanent, no retry); a job being processed when the
+shelf is deleted finds nothing to save, fails quietly without a retry, and adds nothing. See ADR-010.
 
 Upload form fields (all optional together): `batchId` (GUID, chosen by the client), `part` (1-based) and `parts` (1..24).
 With a `batchId`, `part` and `parts` are required and `1 <= part <= parts`; otherwise 400. Without `batchId` nothing changes.
@@ -64,7 +73,7 @@ Pending --claim--> Processing --ok--> Completed
 ```
 
 - Backoff after attempt n: `BackoffBaseSeconds * 2^(n-1)`, capped at `BackoffMaxSeconds` (defaults 30 s, 15 min).
-- Permanent errors (fail immediately): OCR not configured, Azure Vision 4xx other than 429/408, photo missing, shelf or job gone.
+- Permanent errors (fail immediately): OCR not configured, Azure Vision 4xx other than 429/408, photo missing, shelf or job gone, shelf hidden (cleared) by its owner.
 - Retryable: network errors, 429, 5xx, all book resolvers down, timeouts, unexpected exceptions.
 - A worker that dies mid-job leaves it `Processing`; after `LeaseMinutes` another claim picks it up. A job whose lease
   expires during its last attempt is marked `Failed`.
