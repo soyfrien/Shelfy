@@ -63,3 +63,21 @@ at the VM's public IP, issue the certificate with:
 ```bash
 certbot --nginx -d shelfy.ppdac.ltd --non-interactive --agree-tos -m louis@ppdac.ltd --redirect
 ```
+
+## 5. Recognition pipeline (after pulling the commit that adds it)
+
+The photo-recognition worker runs inside the API process. Not yet deployed; steps when you do:
+
+1. Apply the new schema: `psql -h localhost -U shelfy -d shelfy -f db/schema.idempotent.sql` (idempotent; adds `RecognitionJobs` and `DetectedSpines`).
+2. Re-install the unit (`install -m 644 deploy/shelfy.service /etc/systemd/system/shelfy.service && systemctl daemon-reload`).
+   It now sets `StateDirectory=shelfy` and `Storage__LocalPath=/var/lib/shelfy/photos`; photos persist across deploys.
+3. Add Azure AI Vision settings to `/etc/shelfy/shelfy.env` (root-only, never commit):
+   `AzureVision__Endpoint=https://<resource>.cognitiveservices.azure.com` and `AzureVision__Key=<key>`.
+   Optional: `Resolution__GoogleBooksApiKey=<key>`, `Resolution__UserAgent=Shelfy/1.0 (+https://shelfy.ppdac.ltd; mailto:<you>)`.
+   Without the Azure settings jobs fail fast with a message that says what is missing.
+4. The VM needs outbound HTTPS to `openlibrary.org`, `www.googleapis.com` and the Azure Vision endpoint.
+5. Redeploy with `deploy/deploy.sh`, then check `journalctl -u shelfy -n 50` for "Recognition worker started" and upload a test photo.
+
+Memory: expect roughly 100-200 MB resident while processing a photo, within `MemoryMax=300M`. Raise it if you see OOM kills.
+Disk: photos are up to 20 MB each and are kept; monitor `/var/lib/shelfy/photos`.
+The upload and job endpoints have no authentication yet (ADR-006), and the nginx rate limit is the only abuse control.

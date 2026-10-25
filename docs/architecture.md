@@ -54,6 +54,19 @@ API ---> Blob Storage ---> Azure Service Bus queue
                     Attach books to the user's Shelf
 ```
 
+### Implemented in v1
+
+The diagram above is the target. v1 runs the same flow with a database queue and local file storage, behind the same
+interfaces, so Blob Storage and Service Bus can be plugged in later. See [pipeline.md](pipeline.md) and
+[ADR-008](adr/ADR-008-database-job-queue-and-pluggable-providers.md).
+
+| Target | v1 |
+|---|---|
+| Blob Storage | `LocalFileSystemPhotoStorage` (`AzureBlobPhotoStorage` is a stub) |
+| Service Bus queue | `DbJobQueue` over the `RecognitionJobs` table, polled by `RecognitionWorker` |
+| Azure AI Vision | `AzureVisionTextRecognizer` (implemented, not yet run against the real service) |
+| Google Books / OpenLibrary | both implemented, OpenLibrary first |
+
 ## Repository layout (planned)
 
 ```text
@@ -71,6 +84,9 @@ src/
       AddBook/
       SearchBooks/
     Recognition/
+      UploadShelfPhoto/
+      GetRecognitionJob/
+      Storage/ Ocr/ Parsing/ Resolution/ Worker/
     Trading/        (later)
 docs/
 ```

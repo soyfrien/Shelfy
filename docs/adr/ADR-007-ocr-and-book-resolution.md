@@ -17,3 +17,13 @@ Pipeline: MAUI uploads photo, API stores it in Blob Storage and enqueues a messa
 - Asynchronous processing keeps uploads fast.
 - Dependence on third-party APIs; add caching and rate-limit handling.
 - Resolution accuracy needs measuring; manual correction is part of the UX.
+
+## Implementation status (2026-10-25)
+
+Implemented in v1 behind interfaces; see [ADR-008](ADR-008-database-job-queue-and-pluggable-providers.md) and [docs/pipeline.md](../pipeline.md).
+
+- Implemented: upload and job endpoints, the background worker, Azure AI Vision Read client, OpenLibrary and Google Books resolvers, spine parsing and fuzzy matching.
+- Substituted for now: the queue is a database table (not Azure Service Bus) and photos go to the local filesystem (not Blob Storage).
+- Stubbed: `AzureBlobPhotoStorage`.
+- Unverified: the Azure AI Vision client has not been run against the real service.
+- Not built: manual correction of unmatched spines, caching of lookups.

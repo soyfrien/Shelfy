@@ -36,6 +36,8 @@ ASP.NET Core 8 Web API, .NET MAUI, EF Core 8 with PostgreSQL, modular monolith w
   - [ADR-005 Modular monolith](docs/adr/ADR-005-use-modular-monolith.md)
   - [ADR-006 Entra External ID](docs/adr/ADR-006-use-entra-external-id.md)
   - [ADR-007 Azure AI Vision OCR and book resolution](docs/adr/ADR-007-ocr-and-book-resolution.md)
+  - [ADR-008 Database job queue and pluggable providers](docs/adr/ADR-008-database-job-queue-and-pluggable-providers.md)
+- [Recognition pipeline](docs/pipeline.md)
 - [Next: MAUI app](docs/next-maui-app.md)
 - Requirements: [shelf upload](docs/requirements/shelf-upload.md), [recognition](docs/requirements/recognition.md), [public shelf page](docs/requirements/public-shelf-page.md)
 
@@ -45,15 +47,20 @@ ASP.NET Core 8 Web API, .NET MAUI, EF Core 8 with PostgreSQL, modular monolith w
 src/
   Shelfy.sln
   Shelfy.Api              ASP.NET Core 8 host: Swagger, /health, wires modules together (no business logic)
-  Shelfy.Domain           User, Shelf, Book, ShelfBook, AvailabilityStatus (frozen terms, see docs/domain.md)
+  Shelfy.Domain           User, Shelf, Book, ShelfBook, AvailabilityStatus, RecognitionJob, DetectedSpine (see docs/domain.md)
   Shelfy.Infrastructure   EF Core 8 + Npgsql DbContext, entity configurations, migrations
   Shelfy.Features         Vertical slices, one folder per module
-    Users/  Recognition/    module placeholders (no slices yet)
+    Users/                  module placeholder (no slices yet)
     Shelves/CreateShelf     POST /api/shelves
     Shelves/GetShelf        GET  /api/shelves/{shelfId}
     Books/SearchBooks       GET  /api/books/search?q=...&take=20
+    Recognition/
+      UploadShelfPhoto      POST /api/shelves/{shelfId}/photos   (multipart "file", 202 + job id)
+      GetRecognitionJob     GET  /api/recognition-jobs/{jobId}
+      Storage/ Ocr/ Parsing/ Resolution/ Worker/   pipeline pieces behind interfaces, see docs/pipeline.md
 tests/
-  Shelfy.Tests            xunit: domain tests and slice handler tests (EF Core in-memory)
+  Shelfy.Tests            xunit: domain, slice handlers, parser, resolvers, queue/worker (SQLite), API endpoints; recorded JSON fixtures
+db/                       idempotent schema script (generate with db/generate-schema.sh)
 docs/                     vision, architecture, domain, ADRs, requirements, AI workflow
 docker-compose.yml        local PostgreSQL
 ```
@@ -80,14 +87,36 @@ dotnet build src/Shelfy.sln
 dotnet test src/Shelfy.sln
 ```
 
-Tests use the EF Core in-memory provider, so they need no database.
+Tests need no database server and never touch the network: handler tests use the EF Core in-memory provider, queue, worker and endpoint tests use a temporary SQLite file, and resolver/OCR tests use recorded JSON.
 
 ## Migrations
 
 ```bash
 dotnet ef migrations add <Name> --project src/Shelfy.Infrastructure --startup-project src/Shelfy.Api --output-dir Migrations
+db/generate-schema.sh        # regenerates db/schema.idempotent.sql (BOM-free)
 ```
+
+Migrations so far: `InitialCreate`, `AddRecognitionPipeline` (RecognitionJobs, DetectedSpines).
+
+## Recognition pipeline
+
+Upload a photo, a background worker reads the spines, matches books and adds them to the shelf as Private.
+
+```bash
+# development without Azure: canned OCR data, real OpenLibrary lookups
+export Recognition__OcrProvider=Fake Storage__LocalPath=/tmp/shelfy-photos
+dotnet run --project src/Shelfy.Api
+curl -F "file=@shelf.jpg;type=image/jpeg" http://localhost:5165/api/shelves/<shelfId>/photos   # 202 { jobId, statusUrl }
+curl http://localhost:5165/api/recognition-jobs/<jobId>
+```
+
+For real OCR set `AzureVision__Endpoint` and `AzureVision__Key`. Without them, jobs fail with a message saying so.
+All configuration keys, the flow and the limits are in [docs/pipeline.md](docs/pipeline.md).
 
 ## Status
 
-Backend scaffold only: the solution builds, the example slices (CreateShelf, GetShelf, SearchBooks) are stubs, and authentication (ADR-006), Blob Storage, Service Bus and the recognition worker (ADR-007) are not wired up yet. The MAUI app is next, see [docs/next-maui-app.md](docs/next-maui-app.md).
+Backend: domain model, PostgreSQL data layer, shelf and book-search slices, and the v1 recognition pipeline
+(photo upload, job status, background worker, OCR, spine parsing, book resolution) are built and tested.
+Stubbed or not verified: Azure Blob storage is a stub, Service Bus is replaced by a database queue, and the Azure AI Vision
+client has not been run against the real service (see [docs/pipeline.md](docs/pipeline.md)).
+Authentication (ADR-006) is not wired up, so the API is open. The MAUI app is next, see [docs/next-maui-app.md](docs/next-maui-app.md).

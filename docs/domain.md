@@ -14,6 +14,8 @@ The terms below are **frozen**. Do not rename them or introduce synonyms. Changi
 | Loan | A trade where the book returns to the owner. Not in v1. |
 | Listing | A ShelfBook offered for Loan or Sale. Not in v1. |
 | Recommendation | A suggested Book for a User. Not in v1. |
+| RecognitionJob | One uploaded shelf photo and its processing state (Pending, Processing, Completed, Failed). Recognition module, ADR-008. |
+| DetectedSpine | One book spine found in a photo: raw OCR text, parsed title/author candidate and whether it resolved to a Book. Recognition module, ADR-008. |
 
 ## AvailabilityStatus
 
@@ -63,6 +65,14 @@ public class ShelfBook
 }
 ```
 
+Recognition entities (see ADR-008 and `docs/pipeline.md`):
+
+```csharp
+public class RecognitionJob   // ShelfId, PhotoKey, Status, Attempts, MaxAttempts, NextAttemptAt, Error, BooksAdded, ...
+public class DetectedSpine    // RecognitionJobId, Position, RawText, Confidence, CandidateTitle/Author/Isbn,
+                              // Status (Unresolved|Resolved), BookId, ResolvedIsbn, MatchScore, MatchSource
+```
+
 Later entities: `Trade`, `Loan`, `Listing`, `Recommendation`. Define them in `docs/requirements` before coding.
 
 ## Rules
@@ -75,5 +85,5 @@ Later entities: `Trade`, `Loan`, `Listing`, `Recommendation`. Define them in `do
 ## Planned tables
 
 ```text
-Users, Books, Shelves, ShelfBooks, Trades, Messages
+Users, Books, Shelves, ShelfBooks, RecognitionJobs, DetectedSpines, Trades, Messages
 ```
