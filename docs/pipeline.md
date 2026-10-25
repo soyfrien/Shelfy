@@ -86,6 +86,12 @@ This is a heuristic tuned on synthetic and recorded sample data only. Real shelf
 - ISBNs are normalized to ISBN-13. OpenLibrary lists ISBNs for all editions; an English registration group (978-0/978-1) is preferred.
   Different editions of one book have different ISBNs, so the same title in two editions can appear twice (known limitation).
 
+## Deployment status
+
+Deployed on cosmic2 at `https://shelfy.ppdac.ltd` (2026-10-25). Verified end to end with a synthetic 4-spine image
+(`tools/make-test-shelf.py`): Azure AI Vision read all 4 spines, OpenLibrary resolved all 4 (score 1.0), job Completed in
+about 2 s. Duplicate upload returns the existing job; a non-image returns 415. Real shelf photos are still untested.
+
 ## What is real and what is stubbed
 
 | Part | Status |
@@ -96,8 +102,8 @@ This is a heuristic tuned on synthetic and recorded sample data only. Real shelf
 | Database job queue and worker | Implemented |
 | Azure Service Bus queue | Not built (`IJobQueue` is the seam) |
 | Azure AI Vision OCR client | Implemented against the documented Image Analysis 4.0 REST contract; verified against the real service (2023-10-01, F0 resource in southcentralus): the response shape matches the parser, rotated spines come back with polygons starting at the text's top-left; live responses are recorded as `Fixtures/AzureVision/read-live-*.json`. Real shelf photos are still untested |
-| OpenLibrary resolver | Implemented; smoke-tested once against the live API |
-| Google Books resolver | Implemented; tested with recorded JSON only |
+| OpenLibrary resolver | Implemented; verified live from the deployed VM |
+| Google Books resolver | Implemented; recorded JSON only. Unkeyed calls from the VM returned 429, so set `Resolution__GoogleBooksApiKey` |
 | Authentication / ownership checks | Not built (ADR-006); the upload and job endpoints are open |
 | Manual correction of unresolved spines | Not built |
 | Image preprocessing (resize, rotate, EXIF) | Not built; the photo goes to OCR as uploaded |

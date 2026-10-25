@@ -16,6 +16,11 @@ mv /opt/shelfy.new /opt/shelfy
 systemctl daemon-reload
 systemctl enable --now shelfy
 systemctl restart shelfy
-sleep 4
 systemctl is-active shelfy
-curl -fsS http://127.0.0.1:5080/health; echo
+# Startup takes several seconds on a small VM: poll the health check instead of a fixed sleep.
+for i in $(seq 1 30); do
+  curl -fsS http://127.0.0.1:5080/health && { echo; exit 0; }
+  sleep 2
+done
+echo "health check failed after 60 s; see: journalctl -u shelfy -n 50" >&2
+exit 1

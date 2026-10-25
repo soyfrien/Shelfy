@@ -66,7 +66,8 @@ certbot --nginx -d shelfy.ppdac.ltd --non-interactive --agree-tos -m louis@ppdac
 
 ## 5. Recognition pipeline (after pulling the commit that adds it)
 
-The photo-recognition worker runs inside the API process. Not yet deployed; steps when you do:
+The photo-recognition worker runs inside the API process. **Deployed on cosmic2 (2026-10-25)** and verified end to end
+with Azure AI Vision (F0). Steps:
 
 1. Apply the new schema: `psql -h localhost -U shelfy -d shelfy -f db/schema.idempotent.sql` (idempotent; adds `RecognitionJobs` and `DetectedSpines`).
 2. Re-install the unit (`install -m 644 deploy/shelfy.service /etc/systemd/system/shelfy.service && systemctl daemon-reload`).
@@ -81,3 +82,16 @@ The photo-recognition worker runs inside the API process. Not yet deployed; step
 Memory: expect roughly 100-200 MB resident while processing a photo, within `MemoryMax=300M`. Raise it if you see OOM kills.
 Disk: photos are up to 20 MB each and are kept; monitor `/var/lib/shelfy/photos`.
 The upload and job endpoints have no authentication yet (ADR-006), and the nginx rate limit is the only abuse control.
+
+### Deployment notes (cosmic2, 2026-10-25)
+
+- Uploads through `az vm run-command` are limited to ~256 KB per call, so a full publish (3 MB) is slow. Upload only the
+  files that changed (compare `sha256sum` manifests of `/opt/shelfy` and the new publish), rebuild the full tree on the VM
+  from `/opt/shelfy` plus the delta, verify it against the manifest, tar it, then run `deploy.sh`.
+- `run-command` has no protected parameters: a script that writes a secret leaves a copy under
+  `/var/lib/waagent/run-command/download/<n>/script.sh`. Delete it afterwards (`shred -u`). Prefer a dedicated
+  Vision key (the VM uses `key2`; `key1` stays with the developer).
+- `Google Books` without an API key can answer 429 from the VM's shared egress IP. OpenLibrary matches first, so this does
+  not block recognition, but set `Resolution__GoogleBooksApiKey` in `/etc/shelfy/shelfy.env` for a reliable fallback.
+- Azure AI Vision F0: about 20 calls/min and 5,000/month.
+- `deploy.sh` polls `/health` for up to 60 s (the service needs about 6-10 s to start on this VM).
