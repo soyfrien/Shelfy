@@ -1,0 +1,46 @@
+{
+  "modelVersion": "2023-10-01",
+  "metadata": { "width": 900, "height": 700 },
+  "readResult": {
+    "blocks": [
+      {
+        "lines": [
+          {
+            "text": "THE HOBBIT",
+            "boundingPolygon": [ {"x":140,"y":100}, {"x":140,"y":560}, {"x":100,"y":560}, {"x":100,"y":100} ],
+            "words": [
+              { "text": "THE", "confidence": 0.98, "boundingPolygon": [ {"x":140,"y":100}, {"x":140,"y":180}, {"x":100,"y":180}, {"x":100,"y":100} ] },
+              { "text": "HOBBIT", "confidence": 0.96, "boundingPolygon": [ {"x":140,"y":200}, {"x":140,"y":560}, {"x":100,"y":560}, {"x":100,"y":200} ] }
+            ]
+          },
+          {
+            "text": "J.R.R. TOLKIEN",
+            "boundingPolygon": [ {"x":164,"y":150}, {"x":164,"y":450}, {"x":142,"y":450}, {"x":142,"y":150} ],
+            "words": [
+              { "text": "J.R.R.", "confidence": 0.91, "boundingPolygon": [ {"x":164,"y":150}, {"x":164,"y":250}, {"x":142,"y":250}, {"x":142,"y":150} ] },
+              { "text": "TOLKIEN", "confidence": 0.97, "boundingPolygon": [ {"x":164,"y":270}, {"x":164,"y":450}, {"x":142,"y":450}, {"x":142,"y":270} ] }
+            ]
+          },
+          {
+            "text": "Dune",
+            "boundingPolygon": [ {"x":340,"y":80}, {"x":340,"y":400}, {"x":300,"y":400}, {"x":300,"y":80} ],
+            "words": [ { "text": "Dune", "confidence": 0.99, "boundingPolygon": [ {"x":340,"y":80}, {"x":340,"y":400}, {"x":300,"y":400}, {"x":300,"y":80} ] } ]
+          },
+          {
+            "text": "Frank Herbert",
+            "boundingPolygon": [ {"x":368,"y":120}, {"x":368,"y":380}, {"x":346,"y":380}, {"x":346,"y":120} ],
+            "words": [
+              { "text": "Frank", "confidence": 0.95, "boundingPolygon": [ {"x":368,"y":120}, {"x":368,"y":200}, {"x":346,"y":200}, {"x":346,"y":120} ] },
+              { "text": "Herbert", "confidence": 0.94, "boundingPolygon": [ {"x":368,"y":215}, {"x":368,"y":380}, {"x":346,"y":380}, {"x":346,"y":215} ] }
+            ]
+          },
+          {
+            "text": "PENGUIN CLASSICS",
+            "boundingPolygon": [ {"x":700,"y":600}, {"x":820,"y":600}, {"x":820,"y":612}, {"x":700,"y":612} ],
+            "words": [ { "text": "PENGUIN", "confidence": 0.8, "boundingPolygon": [ {"x":700,"y":600}, {"x":760,"y":600}, {"x":760,"y":612}, {"x":700,"y":612} ] } ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "kind": "books#volumes",
+  "totalItems": 2,
+  "items": [
+    {
+      "kind": "books#volume",
+      "id": "wfbpAAAAMAAJ",
+      "volumeInfo": {
+        "title": "Foundation",
+        "authors": ["Isaac Asimov"],
+        "industryIdentifiers": [
+          { "type": "ISBN_10", "identifier": "0553293354" },
+          { "type": "ISBN_13", "identifier": "9780553293357" }
+        ],
+        "imageLinks": {
+          "smallThumbnail": "http://books.google.com/books/content?id=wfbpAAAAMAAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+          "thumbnail": "http://books.google.com/books/content?id=wfbpAAAAMAAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+        }
+      }
+    },
+    {
+      "kind": "books#volume",
+      "id": "other",
+      "volumeInfo": {
+        "title": "Foundation and Empire",
+        "authors": ["Isaac Asimov"],
+        "industryIdentifiers": [ { "type": "ISBN_13", "identifier": "9780553293371" } ]
+      }
+    }
+  ]
+}

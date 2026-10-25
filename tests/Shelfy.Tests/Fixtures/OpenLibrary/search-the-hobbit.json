@@ -1,0 +1,26 @@
+{
+  "numFound": 3,
+  "start": 0,
+  "numFoundExact": true,
+  "docs": [
+    {
+      "key": "/works/OL262758W",
+      "title": "The Hobbit",
+      "author_name": ["J.R.R. Tolkien"],
+      "cover_i": 8406786,
+      "isbn": ["9780547928227", "0547928220", "9780261102217", "0261102214"]
+    },
+    {
+      "key": "/works/OL27479W",
+      "title": "The Hobbit Companion",
+      "author_name": ["David Day"],
+      "cover_i": 1234567,
+      "isbn": ["9780345391803"]
+    },
+    {
+      "key": "/works/OL99999W",
+      "title": "The Hobbit (graphic novel)",
+      "author_name": ["Charles Dixon", "David Wenzel"]
+    }
+  ]
+}
