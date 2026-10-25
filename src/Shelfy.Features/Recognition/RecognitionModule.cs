@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shelfy.Features.Recognition.GetRecognitionJob;
+using Shelfy.Features.Recognition.GetShelfUnmatched;
 using Shelfy.Features.Recognition.GetUploadBatch;
 using Shelfy.Features.Recognition.Ocr;
 using Shelfy.Features.Recognition.Resolution;
@@ -36,6 +37,7 @@ public static class RecognitionModule
         services.AddScoped<UploadShelfPhotoHandler>();
         services.AddScoped<GetRecognitionJobHandler>();
         services.AddScoped<GetUploadBatchHandler>();
+        services.AddScoped<GetShelfUnmatchedHandler>();
 
         // Photo storage: local filesystem by default; AzureBlob is a stub.
         services.AddSingleton<IPhotoStorage>(sp =>
@@ -68,7 +70,8 @@ public static class RecognitionModule
     public static IEndpointRouteBuilder MapRecognitionModule(this IEndpointRouteBuilder app) => app
         .MapUploadShelfPhoto()
         .MapGetRecognitionJob()
-        .MapGetUploadBatch();
+        .MapGetUploadBatch()
+        .MapGetShelfUnmatched();
 
     private static void AddOcr(IServiceCollection services)
     {

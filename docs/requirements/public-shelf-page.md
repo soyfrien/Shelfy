@@ -15,6 +15,7 @@ As a reader, I want a shareable page for my shelf so that friends can see what I
 - The page renders well on mobile and has link-preview metadata (title, image).
 - A disabled, hidden, deleted or unknown shelf URL returns a not-found page.
 - The owner can clear a shelf: hide it (kept, not shown) or delete it with its photos (ADR-010).
+- A visitor (and the owner on the home page) can find a book quickly: a sticky search box filters the cover grid by title or author as they type.
 
 # Status (2026-10-25)
 
@@ -27,4 +28,4 @@ As a reader, I want a shareable page for my shelf so that friends can see what I
 | Mobile layout and link preview | Done: responsive grid, `og:title`, `og:description`, `og:image` (first cover) filled in server-side |
 | Unknown shelf gives a not-found page | Done: 404 HTML page, also for hidden and deleted shelves |
 | Owner can clear a shelf | Done: `POST /api/shelves/{id}/hide` (soft) and `DELETE /api/shelves/{id}` (hard) behind a "Clear shelf" button, no sign-in check yet (ADR-010) |
-
+| Find a book quickly | Done: sticky "Search title or author" box on `/` and `/s/{id}` (client-side: case, accent and punctuation-insensitive, several words in any order, highlight, "N of M books", clear button, title/author sort, "No books match" state). The home page also searches the unmatched spine list (`GET /api/shelves/{id}/unmatched`) and the shelf page does not show or search it |

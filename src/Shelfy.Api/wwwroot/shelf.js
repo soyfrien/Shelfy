@@ -8,7 +8,7 @@
       $('loading').classList.add('hidden');
       var books = shelf.books || [];
       if (!books.length) { $('empty').classList.remove('hidden'); return; }
-      window.Shelfy.renderBooks($('books'), books);
+      window.Shelfy.createSearch({ ul: $('books') }).setBooks(books);
     })
     .catch(function () { $('loading').classList.add('hidden'); $('err').classList.remove('hidden'); });
 })();

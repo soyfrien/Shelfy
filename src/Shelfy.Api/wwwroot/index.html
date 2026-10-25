@@ -45,8 +45,8 @@
     <p class="notice hidden" id="resultNote"></p>
     <ul class="grid" id="books"></ul>
 
-    <div id="unresolvedWrap" class="hidden">
-      <h2>Spines I couldn't match</h2>
+    <div id="unresolvedWrap" class="hidden unmatched-wrap">
+      <h2 id="unresolvedTitle">Spines I couldn't match</h2>
       <p class="notice">This is the text I read on these spines. They were not added to your shelf.</p>
       <div class="card"><ul class="unresolved" id="unresolved"></ul></div>
     </div>
@@ -73,6 +73,7 @@
     <div style="text-align:center"><button class="link" id="cancelClear" type="button">Cancel</button></div>
   </div>
 </div>
+<script src="/search.js"></script>
 <script src="/shared.js"></script>
 <script src="/tiles.js"></script>
 <script src="/app.js"></script>

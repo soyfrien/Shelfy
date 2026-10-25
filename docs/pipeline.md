@@ -40,6 +40,7 @@ GET /api/shelves/{shelfId}/batches/{batchId}   progress per part + merged, de-du
 | POST | `/api/shelves/{shelfId}/photos` | 202 with `{ jobId, status, statusUrl, duplicate }`; 400 no file; 404 unknown shelf; 413 over 20 MB; 415 not JPEG/PNG or wrong content type |
 | GET | `/api/recognition-jobs/{jobId}` | 200 job; 404 unknown job |
 | GET | `/api/shelves/{shelfId}/batches/{batchId}` | 200 batch progress; 404 unknown batch (or batch of another shelf) |
+| GET | `/api/shelves/{shelfId}/unmatched` | 200 `{ shelfId, spines: [{ text, candidateTitle }] }`: spines of the shelf's completed photos that matched no book, repeats removed, at most 1000; 404 unknown or hidden shelf. Read-only; used by the UI search |
 | POST | `/api/shelves/{shelfId}/hide` | 204 (also when already hidden); 404 unknown shelf. Soft clear, see below |
 | DELETE | `/api/shelves/{shelfId}` | 204 always (also for an unknown or already deleted shelf). Hard clear, see below |
 

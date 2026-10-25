@@ -74,3 +74,30 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 
 .modal .sheet { background: var(--card); width: 100%; max-width: 480px; border-radius: 18px 18px 0 0; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; }
 .modal .sheet h2 { margin-top: 0; }
 @media (min-width: 560px) { .modal { align-items: center; } .modal .sheet { border-radius: 18px; } }
+
+/* Search bar above the cover grid: sticks to the top while the shelf scrolls. 16px text so iOS Safari doesn't zoom in on focus. */
+.searchbar {
+  position: -webkit-sticky; position: sticky; top: 0; z-index: 5;
+  margin: 8px -16px 12px; padding: 8px 16px 6px; padding-top: calc(8px + env(safe-area-inset-top));
+  background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.sb-row { position: relative; }
+.sb-input {
+  display: block; width: 100%; height: 48px; padding: 0 46px 0 14px; font: inherit; font-size: 16px; color: var(--ink);
+  background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); -webkit-appearance: none; appearance: none;
+}
+.sb-input:focus { outline: none; border-color: var(--accent); }
+.sb-input::-webkit-search-cancel-button, .sb-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+.sb-clear {
+  position: absolute; right: 2px; top: 2px; width: 44px; height: 44px; border: 0; background: none; color: var(--muted);
+  font-size: 28px; line-height: 1; cursor: pointer; border-radius: 50%;
+}
+.sb-meta { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: .9rem; color: var(--muted); }
+.sb-count { font-weight: 600; }
+.sb-jump { border: 0; background: none; color: var(--accent); font: inherit; font-size: .9rem; font-weight: 600; padding: 6px 0; cursor: pointer; }
+.sb-sort { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.sb-sort select { font: inherit; font-size: 16px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; height: 36px; }
+.sb-empty { text-align: center; padding: 28px 8px; color: var(--muted); }
+.sb-empty strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 6px; word-break: break-word; }
+mark { background: #ffe08a; color: inherit; border-radius: 3px; padding: 0 1px; }
+.unmatched-wrap { scroll-margin-top: 130px; }

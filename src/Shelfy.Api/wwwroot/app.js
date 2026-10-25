@@ -15,9 +15,10 @@
     result: $('result'), resultTitle: $('resultTitle'), resultNote: $('resultNote'), books: $('books'),
     unresolvedWrap: $('unresolvedWrap'), unresolved: $('unresolved'), shareLink: $('shareLink'), copyBtn: $('copyBtn'),
     file: $('file'), newShelf: $('newShelf'), clearBtn: $('clearBtn'), clearModal: $('clearModal'), hideBtn: $('hideBtn'),
-    deleteBtn: $('deleteBtn'), cancelClear: $('cancelClear'), clearError: $('clearError'), clearedNote: $('clearedNote'), clearedText: $('clearedText'), addMore: $('addMore'), parts: $('parts'), partErrors: $('partErrors')
+    deleteBtn: $('deleteBtn'), cancelClear: $('cancelClear'), clearError: $('clearError'), clearedNote: $('clearedNote'), clearedText: $('clearedText'), unresolvedTitle: $('unresolvedTitle'), addMore: $('addMore'), parts: $('parts'), partErrors: $('partErrors')
   };
-  var busy = false;
+  var search = window.Shelfy.createSearch({ ul: els.books, unmatchedUl: els.unresolved, unmatchedWrap: els.unresolvedWrap, unmatchedTitle: els.unresolvedTitle });
+  var busy = false, unmatchedSeq = 0;
   var run = null;   // the batch being processed: { shelfId, batchId, n, parts[], ... }
 
   // While photos are being read, the buttons that start another photo or a new shelf are switched off.
@@ -313,7 +314,7 @@
   function renderShelf(shelf, batch) {
     var books = shelf.books || [];
     els.resultTitle.textContent = books.length ? 'Your shelf · ' + books.length + (books.length === 1 ? ' book' : ' books') : 'Your shelf';
-    window.Shelfy.renderBooks(els.books, books);
+    search.setBooks(books);
     var link = location.origin + '/s/' + shelf.id;
     els.shareLink.href = link; els.shareLink.textContent = link;
 
@@ -332,13 +333,14 @@
     els.resultNote.textContent = note;
     show(els.resultNote, !!note);
 
-    els.unresolved.textContent = '';
-    un.forEach(function (s) {
-      var li = document.createElement('li');
-      li.textContent = s.rawText || s.candidateTitle || '(unreadable)';
-      els.unresolved.appendChild(li);
-    });
-    show(els.unresolvedWrap, un.length > 0);
+    // While photos are still being read, list what this batch could not match; once it is over (or when the page is
+    // just opened) list everything that is unmatched on the whole shelf, from the server.
+    var seq = ++unmatchedSeq;
+    var texts = function (list) { return list.map(function (s) { return s.rawText || s.candidateTitle || '(unreadable)'; }); };
+    if (batch && !(batch.completed + batch.failed >= batch.parts && batch.pending + batch.processing === 0)) search.setUnmatched(texts(un));
+    else api('GET', '/api/shelves/' + shelf.id + '/unmatched').then(function (r) {
+      if (seq === unmatchedSeq) search.setUnmatched((r.spines || []).map(function (s) { return s.text || s.candidateTitle; }));
+    }, function () { if (seq === unmatchedSeq) search.setUnmatched(texts(un)); });
     show(els.result, true);
   }
 
@@ -346,7 +348,8 @@
     var id = ls(KEY_SHELF);
     if (!id) return;
     api('GET', '/api/shelves/' + id).then(function (shelf) {
-      if (shelf.books && shelf.books.length) renderShelf(shelf, null);
+      // Same layout as after an upload: the shelf (with its search box) first; "Add another photo" is under it.
+      if (shelf.books && shelf.books.length) { renderShelf(shelf, null); show(els.pick, false); }
     }, function () { /* shelf is gone or the server is unreachable: show the empty start screen */ });
   }
 
@@ -394,6 +397,7 @@
   els.newShelf.addEventListener('click', function () {
     if (!confirm('Start a new, empty shelf? Your old shelf keeps its link.')) return;
     ls(KEY_SHELF, null);
+    search.reset(); search.setBooks([]); search.setUnmatched([]);
     show(els.result, false);
     show(els.pick, true);
     window.scrollTo(0, 0);
@@ -428,7 +432,7 @@
       show(els.clearModal, false);
       show(els.result, false); show(els.progress, false); show(els.errorBox, false);
       show(els.pick, true);
-      els.books.textContent = ''; els.unresolved.textContent = '';
+      unmatchedSeq++; search.reset(); search.setBooks([]); search.setUnmatched([]);
       els.clearedText.textContent = hard ? 'Deleted: the shelf and its photos are gone.' : 'Hidden: it is no longer shown or shared.';
       show(els.clearedNote, true);
       window.scrollTo(0, 0);

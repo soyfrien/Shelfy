@@ -136,3 +136,14 @@ afterwards with `DELETE` too. To restore a hidden shelf by hand: `UPDATE "Shelve
 Deployed on cosmic2 on 2026-10-25 and verified live: hide (API and the mobile UI) gives 404 on `/api/shelves/{id}`, `/s/{id}`, job status and uploads while rows and the photo stay;
 delete (API and UI) leaves no `Shelves`, `ShelfBooks`, `RecognitionJobs`, `DetectedSpines` rows and no photo folder; `Books` rows stay; hide and delete are idempotent
 (204 twice); deleting a hidden shelf works. Test data was removed afterwards.
+
+## 9. Shelf search (web UI)
+
+No migration and no new configuration. Adds the read-only endpoint `GET /api/shelves/{id}/unmatched` and the static `wwwroot/search.js`
+(plus changes to `shared.js`, `app.js`, `shelf.js`, `style.css`, `index.html`, `shelf.html`). Delta: the four `Shelfy.*.dll`, `Shelfy.Api.deps.json`, `wwwroot/`.
+Rollback: `/opt/shelfy.old` (the old UI simply has no search box; nothing else depends on it).
+
+Checks: `node tools/test-search.js`; then, with a TEST shelf only (`python3 tools/make-test-shelf.py --wide`, upload, wait for the job),
+`node tools/ui-check-search.js https://shelfy.ppdac.ltd <testShelfId>` (needs `puppeteer-core` and Chrome; it only reads the shelf it is given).
+Delete the test shelf afterwards with `DELETE /api/shelves/{id}`.
+

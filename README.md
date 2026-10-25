@@ -61,6 +61,7 @@ src/
       UploadShelfPhoto      POST /api/shelves/{shelfId}/photos   (multipart "file", 202 + job id)
       GetRecognitionJob     GET  /api/recognition-jobs/{jobId}
       GetUploadBatch        GET  /api/shelves/{shelfId}/batches/{batchId}   (progress and merged result of a tiled photo)
+      GetShelfUnmatched     GET  /api/shelves/{shelfId}/unmatched   (spine texts of the shelf's photos that matched no book; read-only)
       Storage/ Ocr/ Parsing/ Resolution/ Worker/   pipeline pieces behind interfaces, see docs/pipeline.md
 tests/
   Shelfy.Tests            xunit: domain, slice handlers, parser, resolvers, queue/worker (SQLite), API endpoints; recorded JSON fixtures
@@ -127,6 +128,11 @@ A plain HTML/CSS/JS page (no build step) is served by the API from `src/Shelfy.A
   (`POST /api/guests`, `POST /api/shelves`), uploads the tiles with a shared batch id, and polls the batch: "Reading part k of n", a progress bar,
   the shelf filling up as parts complete, a Retry button for a part that failed, then the books and the spines that could not be matched.
   The guest id and shelf id are kept in `localStorage`. `node tools/test-tiles.js` checks the tiling plan.
+- Search (home page and `/s/{shelfId}`): a sticky "Search title or author" box above the cover grid filters live while you type, ignoring case,
+  accents and punctuation; several words match in any order ("hugo miserables"), matches are highlighted, and it shows "N of M books", a clear (x)
+  button, a sort choice (title or author A-Z) and a "No books match" state. On the home page it also searches the "Spines I couldn't match" list
+  (so a book that was read but not recognized can still be found, also after a reload) and offers a jump link to the matching entries.
+  Client-side only (`wwwroot/search.js`, `shared.js`); `node tools/test-search.js` tests the matching, `tools/ui-check-search.js` drives it in headless mobile Chrome.
 - "Clear shelf" (under the books): a bottom sheet offers **Hide shelf** (default: the shelf is no longer shown or shared, data is kept) or
   **Delete everything** (red: books on the shelf, detected spines, jobs and stored photos are erased; the shared Books catalog stays).
   Afterwards the page forgets the shelf and starts fresh with a "Shelf cleared" note ([ADR-010](docs/adr/ADR-010-clearing-a-shelf-hide-or-delete.md)).
