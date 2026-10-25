@@ -95,7 +95,7 @@ This is a heuristic tuned on synthetic and recorded sample data only. Real shelf
 | Azure Blob photo storage | **Stub** (throws; select with `Storage__Provider=AzureBlob` only after implementing) |
 | Database job queue and worker | Implemented |
 | Azure Service Bus queue | Not built (`IJobQueue` is the seam) |
-| Azure AI Vision OCR client | Implemented against the documented Image Analysis 4.0 REST contract; **never run against the real service** (tests use recorded JSON) |
+| Azure AI Vision OCR client | Implemented against the documented Image Analysis 4.0 REST contract; verified against the real service (2023-10-01, F0 resource in southcentralus): the response shape matches the parser, rotated spines come back with polygons starting at the text's top-left; live responses are recorded as `Fixtures/AzureVision/read-live-*.json`. Real shelf photos are still untested |
 | OpenLibrary resolver | Implemented; smoke-tested once against the live API |
 | Google Books resolver | Implemented; tested with recorded JSON only |
 | Authentication / ownership checks | Not built (ADR-006); the upload and job endpoints are open |

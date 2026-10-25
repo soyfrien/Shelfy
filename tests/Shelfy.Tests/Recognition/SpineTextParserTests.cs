@@ -50,6 +50,43 @@ public class SpineTextParserTests
     }
 
     [Fact]
+    public void Parses_A_Live_Azure_Vision_Response_With_Rotated_Spines()
+    {
+        // Captured from the real Image Analysis 4.0 service (api-version 2023-10-01) on a synthetic shelf image:
+        // two spines rotated clockwise and one counter-clockwise, lines returned out of left-to-right order.
+        using var json = JsonDocument.Parse(Fixtures.Read("AzureVision/read-live-rotated-shelf.json"));
+        var ocr = AzureVisionTextRecognizer.Parse(json.RootElement);
+
+        Assert.Equal(560, ocr.ImageWidth);
+        Assert.Equal(700, ocr.ImageHeight);
+        Assert.Equal(6, ocr.Lines.Count);
+        Assert.All(ocr.Lines, l => { Assert.Equal(4, l.Polygon.Count); Assert.NotEmpty(l.Words); });
+
+        var spines = SpineTextParser.Parse(ocr);
+
+        Assert.Equal(3, spines.Count);
+        Assert.Collection(spines,
+            s => { Assert.Equal("The Hobbit", s.Title); Assert.Equal("J.R.R. Tolkien", s.Author); },
+            s => { Assert.Equal("Dune", s.Title); Assert.Equal("Frank Herbert", s.Author); },
+            s => { Assert.Equal("Foundation", s.Title); Assert.Equal("Isaac Asimov", s.Author); });
+    }
+
+    [Fact]
+    public void Parses_A_Live_Azure_Vision_Response_With_Horizontal_Text()
+    {
+        using var json = JsonDocument.Parse(Fixtures.Read("AzureVision/read-live-horizontal.json"));
+        var ocr = AzureVisionTextRecognizer.Parse(json.RootElement);
+
+        Assert.Equal(new[] { "THE HOBBIT", "J.R.R. TOLKIEN" }, ocr.Lines.Select(l => l.Text));
+        Assert.All(ocr.Lines, l => Assert.Equal(4, l.Polygon.Count));
+        // Top-left, top-right, bottom-right, bottom-left: text runs left to right.
+        var first = ocr.Lines[0].Polygon;
+        Assert.True(first[1].X > first[0].X && first[2].Y > first[1].Y);
+        Assert.Equal(new[] { "THE", "HOBBIT" }, ocr.Lines[0].Words.Select(w => w.Text));
+        Assert.All(ocr.Lines.SelectMany(l => l.Words), w => Assert.InRange(w.Confidence!.Value, 0.5, 1.0));
+    }
+
+    [Fact]
     public void Parses_The_Recorded_Azure_Vision_Response()
     {
         using var json = JsonDocument.Parse(Fixtures.Read("AzureVision/read-vertical-spines.json"));
