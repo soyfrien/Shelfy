@@ -110,3 +110,13 @@ overlaid on a copy of `/opt/shelfy`, tarred and installed with `deploy.sh`. Pin 
 because a floating version changes the EF Core DLLs and makes the delta several MB.
 End-to-end check after deploy: `python3 tools/make-test-shelf.py`, then guest, shelf, upload, poll, open `/s/{id}`; delete the test rows afterwards.
 
+
+## 7. Wide-photo tiles and batches (ADR-009)
+
+Adds the migration `AddUploadBatches` (three columns and an index on `RecognitionJobs`). It is backward compatible, so apply
+`db/schema.idempotent.sql` first and then deploy the new build; the old build keeps working against the new columns.
+Delta: the four `Shelfy.*.dll`, `Shelfy.Api.deps.json` and `wwwroot/` (`app.js`, `index.html`, `style.css`, new `tiles.js`), 134 KB, uploaded in two `az vm run-command` chunks.
+No new configuration is required. Optional: `AzureVision__MinIntervalMilliseconds` (default 3200; set `0` on a paid Vision tier) and `AzureVision__Max429Retries` (default 2).
+End-to-end check: `python3 tools/make-test-shelf.py --wide --tiles` writes `wide-shelf.jpg`, `wide-shelf.json` (expected books) and the four tiles;
+upload the tiles with the same `batchId`, `part` and `parts` (or use the web UI with `wide-shelf.jpg`) and poll `GET /api/shelves/{id}/batches/{batchId}`.
+Delete the test rows afterwards (`RecognitionJobs`, `Shelves`, `Users` and the photo folder of that shelf under `/var/lib/shelfy/photos`).

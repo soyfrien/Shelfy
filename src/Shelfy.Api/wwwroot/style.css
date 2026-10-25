@@ -55,3 +55,13 @@ input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; over
 .sharebox a { word-break: break-all; color: var(--accent); }
 .empty { text-align: center; color: var(--muted); padding: 40px 0; }
 footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 32px; }
+.parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip { min-width: 28px; height: 28px; padding: 0 6px; border-radius: 99px; border: 1px solid var(--line); background: #f3ece1; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 600; }
+.chip.done { background: var(--ok); border-color: var(--ok); color: #fff; }
+.chip.reading, .chip.uploading { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.retry { background: #f0c36d; border-color: #f0c36d; color: #5b3d00; }
+.chip.error { background: var(--err); border-color: var(--err); color: #fff; }
+.parterrs { margin-top: 12px; }
+.parterr { color: var(--err); font-size: .92rem; padding: 8px 0; border-top: 1px solid var(--line); }
+.parterr:first-child { border-top: 0; }
+.parterr .retry { width: auto; display: inline-block; margin-top: 8px; padding: 8px 16px; }

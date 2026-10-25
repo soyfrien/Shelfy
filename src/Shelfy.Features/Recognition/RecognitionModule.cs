@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shelfy.Features.Recognition.GetRecognitionJob;
+using Shelfy.Features.Recognition.GetUploadBatch;
 using Shelfy.Features.Recognition.Ocr;
 using Shelfy.Features.Recognition.Resolution;
 using Shelfy.Features.Recognition.Storage;
@@ -34,6 +35,7 @@ public static class RecognitionModule
 
         services.AddScoped<UploadShelfPhotoHandler>();
         services.AddScoped<GetRecognitionJobHandler>();
+        services.AddScoped<GetUploadBatchHandler>();
 
         // Photo storage: local filesystem by default; AzureBlob is a stub.
         services.AddSingleton<IPhotoStorage>(sp =>
@@ -65,7 +67,8 @@ public static class RecognitionModule
 
     public static IEndpointRouteBuilder MapRecognitionModule(this IEndpointRouteBuilder app) => app
         .MapUploadShelfPhoto()
-        .MapGetRecognitionJob();
+        .MapGetRecognitionJob()
+        .MapGetUploadBatch();
 
     private static void AddOcr(IServiceCollection services)
     {
@@ -83,6 +86,9 @@ public static class RecognitionModule
             client.MaxResponseContentBufferSize = 8 * 1024 * 1024;
         });
 
+        services.AddSingleton(sp => new OcrThrottle(
+            TimeSpan.FromMilliseconds(Math.Max(0, sp.GetRequiredService<IOptions<AzureVisionOptions>>().Value.MinIntervalMilliseconds))));
+
         services.AddScoped<ITextRecognizer>(sp =>
         {
             var recognition = sp.GetRequiredService<IOptions<RecognitionOptions>>().Value;
@@ -96,7 +102,8 @@ public static class RecognitionModule
             }
 
             return vision.IsConfigured
-                ? new AzureVisionTextRecognizer(sp.GetRequiredService<IHttpClientFactory>().CreateClient(AzureVisionClientName), vision.ApiVersion)
+                ? new AzureVisionTextRecognizer(sp.GetRequiredService<IHttpClientFactory>().CreateClient(AzureVisionClientName), vision.ApiVersion,
+                    sp.GetRequiredService<OcrThrottle>(), Math.Max(0, vision.Max429Retries))
                 : new NotConfiguredTextRecognizer();
         });
     }

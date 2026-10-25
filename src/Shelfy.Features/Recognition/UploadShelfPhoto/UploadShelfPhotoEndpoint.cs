@@ -37,8 +37,28 @@ public static class UploadShelfPhotoEndpoint
                         return Results.BadRequest(new { error = "A multipart form field named 'file' is required." });
                     }
 
+                    // Optional batch fields: batchId (GUID), part and parts (integers).
+                    Guid? batchId = null;
+                    int part = 0, parts = 0;
+                    var form = request.Form;
+                    if (form.TryGetValue("batchId", out var rawBatch) && !string.IsNullOrWhiteSpace(rawBatch))
+                    {
+                        if (!Guid.TryParse(rawBatch.ToString(), out var parsed))
+                        {
+                            return Results.BadRequest(new { error = "batchId must be a GUID." });
+                        }
+
+                        if (!int.TryParse(form["part"], out part) || !int.TryParse(form["parts"], out parts))
+                        {
+                            return Results.BadRequest(new { error = "With a batchId, integer fields 'part' and 'parts' are required." });
+                        }
+
+                        batchId = parsed;
+                    }
+
                     await using var content = file.OpenReadStream();
-                    var result = await handler.HandleAsync(new UploadShelfPhotoRequest(shelfId, file.FileName, file.Length, content), ct);
+                    var result = await handler.HandleAsync(
+                        new UploadShelfPhotoRequest(shelfId, file.FileName, file.Length, content, batchId, part, parts), ct);
                     return result.ToHttpResult(r => Results.Accepted(UploadShelfPhotoHandler.StatusUrl(r.JobId), r));
                 })
             .WithName("UploadShelfPhoto")

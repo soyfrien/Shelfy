@@ -43,10 +43,23 @@ public class RecognitionJob
     /// <summary>How many books this job added to the shelf (already-present books are not counted).</summary>
     public int BooksAdded { get; set; }
 
+    /// <summary>
+    /// Photos uploaded together (the tiles of one wide shelf photo, or a single photo) share a batch id chosen by the client.
+    /// Null for jobs uploaded without one (older clients). Used for progress ("part k of n") and for de-duplicating spines
+    /// seen in the overlap of neighbouring tiles.
+    /// </summary>
+    public Guid? BatchId { get; set; }
+
+    /// <summary>1-based position of this photo within its batch; 0 when there is no batch.</summary>
+    public int TileIndex { get; set; }
+
+    /// <summary>How many photos the client announced for the batch; 0 when there is no batch.</summary>
+    public int TileCount { get; set; }
+
     public ICollection<DetectedSpine> Spines { get; set; } = new List<DetectedSpine>();
 
     public static RecognitionJob CreatePending(Guid shelfId, string photoKey, string contentType, long sizeBytes,
-        string photoSha256, int maxAttempts, DateTime nowUtc) => new()
+        string photoSha256, int maxAttempts, DateTime nowUtc, Guid? batchId = null, int tileIndex = 0, int tileCount = 0) => new()
     {
         Id = Guid.NewGuid(),
         ShelfId = shelfId,
@@ -58,6 +71,9 @@ public class RecognitionJob
         Status = RecognitionJobStatus.Pending,
         NextAttemptAt = nowUtc,
         CreatedAt = nowUtc,
-        UpdatedAt = nowUtc
+        UpdatedAt = nowUtc,
+        BatchId = batchId,
+        TileIndex = batchId is null ? 0 : tileIndex,
+        TileCount = batchId is null ? 0 : tileCount
     };
 }

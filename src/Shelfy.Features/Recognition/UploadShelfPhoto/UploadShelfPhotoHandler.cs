@@ -24,6 +24,14 @@ public class UploadShelfPhotoHandler(
             return HandlerResult<UploadShelfPhotoResponse>.Invalid("ShelfId is required.");
         }
 
+        if (request.BatchId is { } batch &&
+            (batch == Guid.Empty || request.Parts < 1 || request.Parts > UploadShelfPhotoRequest.MaxParts ||
+             request.Part < 1 || request.Part > request.Parts))
+        {
+            return HandlerResult<UploadShelfPhotoResponse>.Invalid(
+                $"With a batchId, 'part' and 'parts' are required: 1 <= part <= parts <= {UploadShelfPhotoRequest.MaxParts}.");
+        }
+
         if (!await db.Shelves.AnyAsync(s => s.Id == request.ShelfId, ct))
         {
             return HandlerResult<UploadShelfPhotoResponse>.NotFound("Shelf not found.");
@@ -74,8 +82,11 @@ public class UploadShelfPhotoHandler(
         try
         {
             // A retried upload of the same photo must not create a second job.
+            // Within a batch the same photo is a duplicate only inside that batch (a failed part is retried as a new job).
+            var batchId = request.BatchId;
             var existing = await db.RecognitionJobs.AsNoTracking()
                 .Where(j => j.ShelfId == request.ShelfId && j.PhotoSha256 == hash && j.Status != RecognitionJobStatus.Failed)
+                .Where(j => batchId == null || j.BatchId == batchId)
                 .OrderBy(j => j.CreatedAt)
                 .Select(j => new { j.Id, j.Status })
                 .FirstOrDefaultAsync(ct);
@@ -86,7 +97,8 @@ public class UploadShelfPhotoHandler(
             }
 
             var job = RecognitionJob.CreatePending(request.ShelfId, key, contentType, metered.BytesRead, hash,
-                Math.Max(1, options.Value.MaxAttempts), clock.GetUtcNow().UtcDateTime);
+                Math.Max(1, options.Value.MaxAttempts), clock.GetUtcNow().UtcDateTime,
+                request.BatchId, request.Part, request.Parts);
             job.Id = jobId;
             db.RecognitionJobs.Add(job);
             await db.SaveChangesAsync(ct);

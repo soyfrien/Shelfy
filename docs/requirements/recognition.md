@@ -16,6 +16,7 @@ As a reader, I want Shelfy to identify the books in my shelf photo so that I do 
 - The same book is not added twice from one photo.
 - Processing status (queued, processing, complete, failed) is visible to the user.
 - Failures are retried and then dead-lettered without losing the photo.
+- A wide or large photo is read in overlapping parts, with visible progress per part; a book or spine seen in two parts appears once.
 
 # Status (2026-10-25)
 
@@ -29,5 +30,6 @@ As a reader, I want Shelfy to identify the books in my shelf photo so that I do 
 | Same book not added twice from one photo | Done |
 | Status visible (queued, processing, complete, failed) | Done: Pending, Processing, Completed, Failed |
 | Failures retried then dead-lettered without losing the photo | Done: backoff retries, then Failed; photo kept |
+| Wide photos read in overlapping parts, progress, no duplicates | Done in the web UI and API (ADR-009): tiles, batch status endpoint, de-duplication of unresolved spines, OCR throttle and 429 retry. Verified on a synthetic 16-spine panorama; real phone photos untested |
 
 Accuracy on real shelf photos is unmeasured. See [pipeline.md](../pipeline.md).

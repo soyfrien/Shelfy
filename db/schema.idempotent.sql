@@ -190,3 +190,43 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025214348_AddUploadBatches') THEN
+    ALTER TABLE "RecognitionJobs" ADD "BatchId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025214348_AddUploadBatches') THEN
+    ALTER TABLE "RecognitionJobs" ADD "TileCount" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025214348_AddUploadBatches') THEN
+    ALTER TABLE "RecognitionJobs" ADD "TileIndex" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025214348_AddUploadBatches') THEN
+    CREATE INDEX "IX_RecognitionJobs_ShelfId_BatchId" ON "RecognitionJobs" ("ShelfId", "BatchId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261025214348_AddUploadBatches') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025214348_AddUploadBatches', '8.0.32');
+    END IF;
+END $EF$;
+COMMIT;
+

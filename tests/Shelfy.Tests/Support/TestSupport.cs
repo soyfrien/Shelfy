@@ -101,6 +101,16 @@ public class FakeBookResolver : IBookResolver
         new(isbn, title, author, null, score, "Fake");
 }
 
+/// <summary>Returns one scripted OCR result per call, in order (the tiles of one batch).</summary>
+public class ScriptedRecognizer(params OcrResult[] results) : ITextRecognizer
+{
+    private int _next;
+    public Task<OcrResult> RecognizeAsync(Stream image, string contentType, CancellationToken ct = default) =>
+        Task.FromResult(results[Math.Min(_next++, results.Length - 1)]);
+
+    public static OcrResult Lines(params string[] lines) => new(null, null, lines.Select(OcrLine.TextOnly).ToList());
+}
+
 public class ThrowingRecognizer(Exception ex) : ITextRecognizer
 {
     public Task<OcrResult> RecognizeAsync(Stream image, string contentType, CancellationToken ct = default) => throw ex;
@@ -172,7 +182,7 @@ public sealed class PipelineHarness : IDisposable
     private IOptions<RecognitionOptions> Options2() => Microsoft.Extensions.Options.Options.Create(Options);
 
     /// <summary>Creates a user, a shelf and a pending job for a stored fake photo.</summary>
-    public async Task<(Guid ShelfId, Guid JobId)> SeedJobAsync(Guid? shelfId = null)
+    public async Task<(Guid ShelfId, Guid JobId)> SeedJobAsync(Guid? shelfId = null, Guid? batchId = null, int part = 0, int parts = 0)
     {
         await using var db = Database.CreateContext();
         Guid sid;
@@ -191,7 +201,13 @@ public sealed class PipelineHarness : IDisposable
 
         var key = $"shelves/{sid:N}/{Guid.NewGuid():N}.jpg";
         Storage.Files[key] = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3 };
-        var job = RecognitionJob.CreatePending(sid, key, "image/jpeg", 7, Guid.NewGuid().ToString("N"), Options.MaxAttempts, Clock.GetUtcNow().UtcDateTime);
+        var job = RecognitionJob.CreatePending(sid, key, "image/jpeg", 7, Guid.NewGuid().ToString("N"), Options.MaxAttempts, Clock.GetUtcNow().UtcDateTime,
+            batchId, part, parts);
+        if (batchId is not null)
+        {
+            job.NextAttemptAt = job.NextAttemptAt.AddMilliseconds(part - 1000); // claim order = part order, all due now
+        }
+
         db.RecognitionJobs.Add(job);
         await db.SaveChangesAsync();
         return (sid, job.Id);

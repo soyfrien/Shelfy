@@ -37,6 +37,7 @@ ASP.NET Core 8 Web API, .NET MAUI, EF Core 8 with PostgreSQL, modular monolith w
   - [ADR-006 Entra External ID](docs/adr/ADR-006-use-entra-external-id.md)
   - [ADR-007 Azure AI Vision OCR and book resolution](docs/adr/ADR-007-ocr-and-book-resolution.md)
   - [ADR-008 Database job queue and pluggable providers](docs/adr/ADR-008-database-job-queue-and-pluggable-providers.md)
+  - [ADR-009 Tiled uploads and batches](docs/adr/ADR-009-tiled-uploads-and-batches.md)
 - [Recognition pipeline](docs/pipeline.md)
 - [Next: MAUI app](docs/next-maui-app.md)
 - Requirements: [shelf upload](docs/requirements/shelf-upload.md), [recognition](docs/requirements/recognition.md), [public shelf page](docs/requirements/public-shelf-page.md)
@@ -57,6 +58,7 @@ src/
     Recognition/
       UploadShelfPhoto      POST /api/shelves/{shelfId}/photos   (multipart "file", 202 + job id)
       GetRecognitionJob     GET  /api/recognition-jobs/{jobId}
+      GetUploadBatch        GET  /api/shelves/{shelfId}/batches/{batchId}   (progress and merged result of a tiled photo)
       Storage/ Ocr/ Parsing/ Resolution/ Worker/   pipeline pieces behind interfaces, see docs/pipeline.md
 tests/
   Shelfy.Tests            xunit: domain, slice handlers, parser, resolvers, queue/worker (SQLite), API endpoints; recorded JSON fixtures
@@ -96,7 +98,7 @@ dotnet ef migrations add <Name> --project src/Shelfy.Infrastructure --startup-pr
 db/generate-schema.sh        # regenerates db/schema.idempotent.sql (BOM-free)
 ```
 
-Migrations so far: `InitialCreate`, `AddRecognitionPipeline` (RecognitionJobs, DetectedSpines).
+Migrations so far: `InitialCreate`, `AddRecognitionPipeline` (RecognitionJobs, DetectedSpines), `AddUploadBatches` (BatchId, TileIndex, TileCount on RecognitionJobs).
 
 ## Recognition pipeline
 
@@ -117,16 +119,19 @@ All configuration keys, the flow and the limits are in [docs/pipeline.md](docs/p
 
 A plain HTML/CSS/JS page (no build step) is served by the API from `src/Shelfy.Api/wwwroot`:
 
-- `/` home page: pick or take a photo, the browser downscales it (longest side 3200 px, JPEG; this also converts HEIC),
-  creates an anonymous guest and a shelf (`POST /api/guests`, `POST /api/shelves`), uploads the photo, polls the job and shows
-  the books and the spines that could not be matched. The guest id and shelf id are kept in `localStorage`.
+- `/` home page: pick or take a photo. The browser decodes it (this also converts HEIC) and either downscales it (normal photos,
+  longest side 3200 px, JPEG) or, for a wide or large shelf, cuts it into overlapping tiles of at most 2400 px
+  ([ADR-009](docs/adr/ADR-009-tiled-uploads-and-batches.md), [how the thresholds work](docs/pipeline.md)). It creates an anonymous guest and a shelf
+  (`POST /api/guests`, `POST /api/shelves`), uploads the tiles with a shared batch id, and polls the batch: "Reading part k of n", a progress bar,
+  the shelf filling up as parts complete, a Retry button for a part that failed, then the books and the spines that could not be matched.
+  The guest id and shelf id are kept in `localStorage`. `node tools/test-tiles.js` checks the tiling plan.
 - `/s/{shelfId}` shareable shelf page (title, author, cover grid, link-preview tags; unknown shelf gives a 404 page).
   Public sharing is not switchable yet: `IsPublic` is not enforced because the API is open (see ADR-006).
 
 ## Status
 
 Backend: domain model, PostgreSQL data layer, shelf and book-search slices, and the v1 recognition pipeline
-(photo upload, job status, background worker, OCR, spine parsing, book resolution) are built and tested.
+(photo upload, job status, background worker, OCR, spine parsing, book resolution, tiles and batch progress for wide shelves) are built and tested.
 Stubbed or not verified: Azure Blob storage is a stub, Service Bus is replaced by a database queue, and the Azure AI Vision
 client has not been run against the real service (see [docs/pipeline.md](docs/pipeline.md)).
 The Azure AI Vision client has since been run against the real service (see docs/pipeline.md) and a mobile web UI is live at https://shelfy.ppdac.ltd/.

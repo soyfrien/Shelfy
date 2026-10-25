@@ -23,5 +23,7 @@ public class RecognitionJobConfiguration : IEntityTypeConfiguration<RecognitionJ
         builder.HasIndex(j => new { j.Status, j.NextAttemptAt });
         // Upload idempotency: find an existing job for the same photo on the same shelf.
         builder.HasIndex(j => new { j.ShelfId, j.PhotoSha256 });
+        // Batch progress and cross-tile de-duplication.
+        builder.HasIndex(j => new { j.ShelfId, j.BatchId });
     }
 }

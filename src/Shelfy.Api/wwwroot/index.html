@@ -19,7 +19,7 @@
     <input type="file" id="file" accept="image/*">
     <ul class="tips" style="margin-top:14px">
       <li>Good light, no glare, and the spines facing the camera.</li>
-      <li>One shelf per photo works best. Stand back so the whole row is sharp.</li>
+      <li>Stand back so the whole row is sharp. Long or wide shelves are fine: they are read in overlapping parts.</li>
       <li>Photos can be added to the same shelf one after another.</li>
     </ul>
   </section>
@@ -28,6 +28,8 @@
     <img class="preview hidden" id="preview" alt="Your photo">
     <div class="status"><div class="spinner" id="spinner"></div><div id="statusText">Starting…</div></div>
     <div class="bar" id="barWrap"><i id="bar"></i></div>
+    <div class="parts hidden" id="parts" aria-label="Progress by part"></div>
+    <div class="parterrs hidden" id="partErrors" role="alert"></div>
   </section>
 
   <section class="card error hidden" id="errorBox" role="alert">
@@ -52,13 +54,14 @@
       <a id="shareLink" href="#"></a>
       <button class="btn secondary" id="copyBtn" type="button" style="width:auto;padding:10px 16px">Copy link</button>
     </div>
-    <label class="btn secondary" for="file" style="margin-top:12px">📷 Add another photo to this shelf</label>
+    <label class="btn secondary" id="addMore" for="file" style="margin-top:12px">📷 Add another photo to this shelf</label>
     <div style="text-align:center"><button class="link" id="newShelf" type="button">Start a new shelf</button></div>
   </section>
 
   <footer>Shelfy is an early test. Anyone with your shelf link can see it.</footer>
 </div>
 <script src="/shared.js"></script>
+<script src="/tiles.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

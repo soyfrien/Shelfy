@@ -57,6 +57,15 @@ public class AzureVisionOptions
     public string ApiVersion { get; set; } = "2023-10-01";
     public int TimeoutSeconds { get; set; } = 60;
 
+    /// <summary>
+    /// Minimum gap between OCR calls across all jobs. The free tier allows about 20 per minute; 3200 ms keeps a long queue
+    /// of tiles under that. Set 0 on a paid tier.
+    /// </summary>
+    public int MinIntervalMilliseconds { get; set; } = 3200;
+
+    /// <summary>How often a 429 answer is retried in place (waiting Retry-After, at most 30 s) before the job queue's backoff takes over.</summary>
+    public int Max429Retries { get; set; } = 2;
+
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Key) &&
         Uri.TryCreate(Endpoint, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;

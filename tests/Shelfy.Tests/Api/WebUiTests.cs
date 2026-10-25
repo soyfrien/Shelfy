@@ -38,6 +38,7 @@ public class WebUiTests : IDisposable
     [Theory]
     [InlineData("/app.js", "javascript")]
     [InlineData("/shared.js", "javascript")]
+    [InlineData("/tiles.js", "javascript")]
     [InlineData("/shelf.js", "javascript")]
     [InlineData("/style.css", "css")]
     public async Task Static_Assets_Are_Served_And_Revalidated(string path, string type)

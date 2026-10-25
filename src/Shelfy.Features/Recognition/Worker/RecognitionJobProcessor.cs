@@ -10,7 +10,7 @@ using Shelfy.Infrastructure;
 
 namespace Shelfy.Features.Recognition.Worker;
 
-public record ProcessingSummary(int SpinesDetected, int SpinesResolved, int BooksAdded);
+public record ProcessingSummary(int SpinesDetected, int SpinesResolved, int BooksAdded, int DuplicatesDropped = 0);
 
 /// <summary>
 /// Runs the pipeline for one claimed job: photo -> OCR -> spine parsing -> book resolution -> shelf.
@@ -53,6 +53,16 @@ public class RecognitionJobProcessor(
         var previous = await db.DetectedSpines.Where(s => s.RecognitionJobId == jobId).ToListAsync(ct);
         db.DetectedSpines.RemoveRange(previous);
 
+        // Spines already found by the other photos (tiles) of the same batch: the overlap zones show the same spines twice.
+        var peers = job.BatchId is { } batchId
+            ? await db.DetectedSpines.Include(sp => sp.Book)
+                .Where(sp => sp.RecognitionJobId != jobId &&
+                             db.RecognitionJobs.Any(j => j.Id == sp.RecognitionJobId && j.ShelfId == job.ShelfId && j.BatchId == batchId))
+                .ToListAsync(ct)
+            : new List<DetectedSpine>();
+        var tiled = job.TileCount > 1;
+        var dropped = 0;
+
         var booksByIsbn = new Dictionary<string, Book>();
         var resolved = 0;
         var added = 0;
@@ -72,18 +82,42 @@ public class RecognitionJobProcessor(
                 CandidateAuthor = candidate.Author,
                 CandidateIsbn = candidate.Isbn
             };
-            db.DetectedSpines.Add(spine);
 
-            if (candidate.Title.Length < 2 && candidate.Isbn is null)
-            {
-                continue;
-            }
-
-            var match = await ResolveAsync(candidate, opts.MinMatchScore, ct);
+            // In a tile, a read that is only a person's name is most likely the author line of a spine whose title was cut off
+            // by the tile edge (the whole spine is in a neighbouring tile). Looking it up as a title could add a wrong book.
+            var authorOnlyFragment = tiled && candidate.Author is null && candidate.Isbn is null &&
+                                     TextNormalizer.LooksLikeAuthorName(candidate.Title);
+            var match = authorOnlyFragment || (candidate.Title.Length < 2 && candidate.Isbn is null)
+                ? null
+                : await ResolveAsync(candidate, opts.MinMatchScore, ct);
             if (match is null || match.Score < opts.MinMatchScore || Isbn.Normalize(match.Isbn) is not { } isbn)
             {
+                // Unresolved: in a tiled photo, keep it only if it is not noise, not an edge fragment of a spine
+                // another tile read better, and not a repeat of one it read just as well.
+                if (tiled && SpineDeduper.IsJunkFragment(candidate.RawText, candidate.Confidence))
+                {
+                    dropped++;
+                    continue;
+                }
+
+                if (!KeepUnresolved(candidate, peers, out var superseded))
+                {
+                    dropped++;
+                    continue;
+                }
+
+                foreach (var old in superseded)
+                {
+                    db.DetectedSpines.Remove(old);
+                    peers.Remove(old);
+                    dropped++;
+                }
+
+                db.DetectedSpines.Add(spine);
                 continue;
             }
+
+            db.DetectedSpines.Add(spine);
 
             if (!booksByIsbn.TryGetValue(isbn, out var book))
             {
@@ -107,6 +141,17 @@ public class RecognitionJobProcessor(
             spine.MarkResolved(book, match.Score, match.Source);
             resolved++;
 
+            // An unresolved read of the same spine from a neighbouring tile (a fragment) is now explained by this book.
+            foreach (var old in peers.Where(p => p.Status == SpineResolutionStatus.Unresolved &&
+                                                  (SpineDeduper.IsSameSpine(p.RawText, candidate.RawText) ||
+                                                   SpineDeduper.IsSameSpine(p.RawText, $"{book.Title} {book.Author}") ||
+                                                   SpineDeduper.IsSameSpine(p.RawText, book.Title))).ToList())
+            {
+                db.DetectedSpines.Remove(old);
+                peers.Remove(old);
+                dropped++;
+            }
+
             // Shelf.AddBook keeps the shelf free of duplicates and adds the book as Private.
             var shelfBook = shelf.AddBook(book.Id);
             if (shelfBook is not null)
@@ -119,7 +164,44 @@ public class RecognitionJobProcessor(
         job.UpdatedAt = clock.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync(ct);
 
-        return new ProcessingSummary(candidates.Count, resolved, added);
+        if (dropped > 0)
+        {
+            logger.LogInformation("Job {JobId}: dropped {Dropped} duplicate or junk spine reads from overlapping tiles", jobId, dropped);
+        }
+
+        return new ProcessingSummary(candidates.Count, resolved, added, dropped);
+    }
+
+    /// <summary>
+    /// Decides whether an unresolved read is a new spine. It is a duplicate when a peer from the same batch (another tile)
+    /// reads the same spine at least as well, or a resolved peer's text or book explains it. When the new read is better
+    /// than unresolved peers of the same spine, those are returned in <paramref name="superseded"/> to be replaced.
+    /// </summary>
+    public static bool KeepUnresolved(SpineCandidate candidate, List<DetectedSpine> peers, out List<DetectedSpine> superseded)
+    {
+        superseded = new List<DetectedSpine>();
+        var quality = SpineDeduper.Quality(candidate.RawText, candidate.Confidence);
+        foreach (var peer in peers)
+        {
+            var same = SpineDeduper.IsSameSpine(peer.RawText, candidate.RawText) ||
+                       (peer.Book is { } b && (SpineDeduper.IsSameSpine(candidate.RawText, b.Title) ||
+                                               SpineDeduper.IsSameSpine(candidate.RawText, $"{b.Title} {b.Author}")));
+            if (!same)
+            {
+                continue;
+            }
+
+            if (peer.Status == SpineResolutionStatus.Resolved ||
+                SpineDeduper.Quality(peer.RawText, peer.Confidence) >= quality)
+            {
+                superseded.Clear();
+                return false;
+            }
+
+            superseded.Add(peer);
+        }
+
+        return true;
     }
 
     /// <summary>

@@ -124,6 +124,9 @@ namespace Shelfy.Infrastructure.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("BooksAdded")
                         .HasColumnType("integer");
 
@@ -175,10 +178,18 @@ namespace Shelfy.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<int>("TileCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TileIndex")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ShelfId", "BatchId");
 
                     b.HasIndex("ShelfId", "PhotoSha256");
 
