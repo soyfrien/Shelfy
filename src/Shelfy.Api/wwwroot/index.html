@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8a4b2a">
+<title>Shelfy – photo your bookshelf</title>
+<meta name="description" content="Take a photo of your bookshelf and Shelfy turns it into a digital shelf.">
+<meta property="og:title" content="Shelfy">
+<meta property="og:description" content="Take a photo of your bookshelf and Shelfy turns it into a digital shelf.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><h1>📚 Shelfy</h1><span class="tag">Photo in, bookshelf out</span></header>
+
+  <section class="card" id="pick">
+    <label class="btn" id="pickBtn" for="file">📷 Take or choose a photo of your bookshelf</label>
+    <input type="file" id="file" accept="image/*">
+    <ul class="tips" style="margin-top:14px">
+      <li>Good light, no glare, and the spines facing the camera.</li>
+      <li>One shelf per photo works best. Stand back so the whole row is sharp.</li>
+      <li>Photos can be added to the same shelf one after another.</li>
+    </ul>
+  </section>
+
+  <section class="card hidden" id="progress" aria-live="polite">
+    <img class="preview hidden" id="preview" alt="Your photo">
+    <div class="status"><div class="spinner" id="spinner"></div><div id="statusText">Starting…</div></div>
+    <div class="bar" id="barWrap"><i id="bar"></i></div>
+  </section>
+
+  <section class="card error hidden" id="errorBox" role="alert">
+    <strong id="errorTitle">Something went wrong</strong>
+    <div id="errorText"></div>
+    <div style="margin-top:12px"><label class="btn secondary" for="file">Try another photo</label></div>
+  </section>
+
+  <section id="result" class="hidden">
+    <h2 id="resultTitle">Your shelf</h2>
+    <p class="notice hidden" id="resultNote"></p>
+    <ul class="grid" id="books"></ul>
+
+    <div id="unresolvedWrap" class="hidden">
+      <h2>Spines I couldn't match</h2>
+      <p class="notice">This is the text I read on these spines. They were not added to your shelf.</p>
+      <div class="card"><ul class="unresolved" id="unresolved"></ul></div>
+    </div>
+
+    <h2>Share</h2>
+    <div class="card sharebox">
+      <a id="shareLink" href="#"></a>
+      <button class="btn secondary" id="copyBtn" type="button" style="width:auto;padding:10px 16px">Copy link</button>
+    </div>
+    <label class="btn secondary" for="file" style="margin-top:12px">📷 Add another photo to this shelf</label>
+    <div style="text-align:center"><button class="link" id="newShelf" type="button">Start a new shelf</button></div>
+  </section>
+
+  <footer>Shelfy is an early test. Anyone with your shelf link can see it.</footer>
+</div>
+<script src="/shared.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

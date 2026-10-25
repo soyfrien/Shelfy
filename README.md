@@ -113,10 +113,21 @@ curl http://localhost:5165/api/recognition-jobs/<jobId>
 For real OCR set `AzureVision__Endpoint` and `AzureVision__Key`. Without them, jobs fail with a message saying so.
 All configuration keys, the flow and the limits are in [docs/pipeline.md](docs/pipeline.md).
 
+## Web UI
+
+A plain HTML/CSS/JS page (no build step) is served by the API from `src/Shelfy.Api/wwwroot`:
+
+- `/` home page: pick or take a photo, the browser downscales it (longest side 3200 px, JPEG; this also converts HEIC),
+  creates an anonymous guest and a shelf (`POST /api/guests`, `POST /api/shelves`), uploads the photo, polls the job and shows
+  the books and the spines that could not be matched. The guest id and shelf id are kept in `localStorage`.
+- `/s/{shelfId}` shareable shelf page (title, author, cover grid, link-preview tags; unknown shelf gives a 404 page).
+  Public sharing is not switchable yet: `IsPublic` is not enforced because the API is open (see ADR-006).
+
 ## Status
 
 Backend: domain model, PostgreSQL data layer, shelf and book-search slices, and the v1 recognition pipeline
 (photo upload, job status, background worker, OCR, spine parsing, book resolution) are built and tested.
 Stubbed or not verified: Azure Blob storage is a stub, Service Bus is replaced by a database queue, and the Azure AI Vision
 client has not been run against the real service (see [docs/pipeline.md](docs/pipeline.md)).
+The Azure AI Vision client has since been run against the real service (see docs/pipeline.md) and a mobile web UI is live at https://shelfy.ppdac.ltd/.
 Authentication (ADR-006) is not wired up, so the API is open. The MAUI app is next, see [docs/next-maui-app.md](docs/next-maui-app.md).

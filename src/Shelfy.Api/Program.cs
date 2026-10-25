@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Shelfy.Features;
 using Shelfy.Infrastructure;
 
@@ -12,11 +13,22 @@ builder.Services.AddShelfyFeatures(builder.Configuration);
 
 var app = builder.Build();
 
+// Behind nginx (loopback): trust X-Forwarded-Proto so absolute URLs (link-preview tags) use https.
+app.UseForwardedHeaders(new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor });
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// The web UI (wwwroot): index.html at "/", shelf template at /s/{id}. HTML/JS/CSS are revalidated on every load so a
+// redeploy shows up immediately on phones.
+app.UseDefaultFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache"
+});
 
 app.MapHealthChecks("/health");
 app.MapShelfyFeatures();

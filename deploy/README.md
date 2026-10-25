@@ -95,3 +95,18 @@ The upload and job endpoints have no authentication yet (ADR-006), and the nginx
   not block recognition, but set `Resolution__GoogleBooksApiKey` in `/etc/shelfy/shelfy.env` for a reliable fallback.
 - Azure AI Vision F0: about 20 calls/min and 5,000/month.
 - `deploy.sh` polls `/health` for up to 60 s (the service needs about 6-10 s to start on this VM).
+
+## 6. Web UI (wwwroot)
+
+The API serves a static mobile web UI from `wwwroot` (published with the app, so a normal deploy ships it). `/` is the upload page and
+`/s/{shelfId}` the shareable shelf page; `/health` and `/api/*` are unchanged. HTML, JS and CSS are sent with `Cache-Control: no-cache`,
+so a redeploy shows up on phones at once. nginx must allow bodies of at least 20 MB for the shelfy server block (`client_max_body_size 25m`,
+already in `deploy/nginx-shelfy.ppdac.ltd.conf`); the browser downscales photos before upload, so typical uploads are 1-3 MB.
+`Program.cs` trusts `X-Forwarded-Proto` from the local nginx so absolute URLs in link-preview tags use https.
+The UI needs no database change; it creates anonymous guest users through `POST /api/guests` (temporary until ADR-006).
+
+UI-only deploy (cosmic2, 2026-10-25): the 114 KB delta (the four `Shelfy.*.dll` and `wwwroot/`) was uploaded in two `az vm run-command` chunks,
+overlaid on a copy of `/opt/shelfy`, tarred and installed with `deploy.sh`. Pin `Microsoft.EntityFrameworkCore.Design` (done: 8.0.32),
+because a floating version changes the EF Core DLLs and makes the delta several MB.
+End-to-end check after deploy: `python3 tools/make-test-shelf.py`, then guest, shelf, upload, poll, open `/s/{id}`; delete the test rows afterwards.
+

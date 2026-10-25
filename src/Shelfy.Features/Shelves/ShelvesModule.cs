@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Shelfy.Features.Shelves.CreateShelf;
 using Shelfy.Features.Shelves.GetShelf;
+using Shelfy.Features.Shelves.ShelfPage;
 
 namespace Shelfy.Features.Shelves;
 
@@ -15,5 +16,5 @@ public static class ShelvesModule
     }
 
     public static IEndpointRouteBuilder MapShelvesModule(this IEndpointRouteBuilder app) =>
-        app.MapCreateShelf().MapGetShelf();
+        app.MapCreateShelf().MapGetShelf().MapShelfPage();
 }
