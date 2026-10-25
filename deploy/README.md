@@ -141,7 +141,7 @@ delete (API and UI) leaves no `Shelves`, `ShelfBooks`, `RecognitionJobs`, `Detec
 
 No migration and no new configuration. Adds the read-only endpoint `GET /api/shelves/{id}/unmatched` and the static `wwwroot/search.js`
 (plus changes to `shared.js`, `app.js`, `shelf.js`, `style.css`, `index.html`, `shelf.html`). Delta: the four `Shelfy.*.dll`, `Shelfy.Api.deps.json`, `wwwroot/`.
-Rollback: `/opt/shelfy.old` (the old UI simply has no search box; nothing else depends on it).
+Rollback: `/opt/shelfy.old` (the old UI simply has no search box; nothing else depends on it). Note `deploy.sh` keeps only one old release, so a second quick UI-only deploy overwrites it.
 
 Checks: `node tools/test-search.js`; then, with a TEST shelf only (`python3 tools/make-test-shelf.py --wide`, upload, wait for the job),
 `node tools/ui-check-search.js https://shelfy.ppdac.ltd <testShelfId>` (needs `puppeteer-core` and Chrome; it only reads the shelf it is given).

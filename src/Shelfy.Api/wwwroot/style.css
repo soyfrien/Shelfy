@@ -101,3 +101,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; margin-top: 
 .sb-empty strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 6px; word-break: break-word; }
 mark { background: #ffe08a; color: inherit; border-radius: 3px; padding: 0 1px; }
 .unmatched-wrap { scroll-margin-top: 130px; }
+@media (max-width: 440px) { .sb-sortword { display: none; } }
+.sb-count, .sb-jump { white-space: nowrap; }
+.sb-sort select { max-width: 140px; }
+.unresolved li.first { border-top: 0; }

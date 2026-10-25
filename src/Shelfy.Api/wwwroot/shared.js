@@ -77,7 +77,8 @@
     var count = document.createElement('span'); count.className = 'sb-count'; count.setAttribute('aria-live', 'polite');
     var jump = document.createElement('button'); jump.type = 'button'; jump.className = 'sb-jump hidden';
     var sortLabel = document.createElement('label'); sortLabel.className = 'sb-sort';
-    sortLabel.appendChild(document.createTextNode('Sort '));
+    var sortWord = document.createElement('span'); sortWord.className = 'sb-sortword'; sortWord.textContent = 'Sort';
+    sortLabel.appendChild(sortWord);
     var sort = document.createElement('select'); sort.setAttribute('aria-label', 'Sort books');
     [['title', 'Title A–Z'], ['author', 'Author A–Z']].forEach(function (p) {
       var op = document.createElement('option'); op.value = p[0]; op.textContent = p[1]; sort.appendChild(op);
@@ -117,6 +118,7 @@
       unmatched.forEach(function (u) {
         var ok = S.matches(u.text, toks);
         u.li.classList.toggle('hidden', !ok);
+        u.li.classList.toggle('first', ok && um === 0);   // no divider line above the first visible entry
         if (ok) { um++; setMarked(u.li, u.text, toks); } else if (u.marked) { u.li.textContent = u.text; }
         u.marked = ok && searching;
       });
