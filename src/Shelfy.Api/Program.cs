@@ -8,7 +8,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks();
 
 builder.Services.AddShelfyInfrastructure(builder.Configuration);
-builder.Services.AddShelfyFeatures();
+builder.Services.AddShelfyFeatures(builder.Configuration);
 
 var app = builder.Build();
 

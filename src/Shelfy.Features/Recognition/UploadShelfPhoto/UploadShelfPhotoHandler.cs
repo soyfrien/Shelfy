@@ -1,0 +1,125 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Shelfy.Domain;
+using Shelfy.Features.Common;
+using Shelfy.Features.Recognition.Storage;
+using Shelfy.Features.Recognition.Worker;
+using Shelfy.Infrastructure;
+
+namespace Shelfy.Features.Recognition.UploadShelfPhoto;
+
+public class UploadShelfPhotoHandler(
+    ShelfyDbContext db,
+    IPhotoStorage storage,
+    IJobQueue queue,
+    IOptions<RecognitionOptions> options,
+    TimeProvider clock)
+{
+    public const long MaxPhotoBytes = 20L * 1024 * 1024;
+
+    public async Task<HandlerResult<UploadShelfPhotoResponse>> HandleAsync(UploadShelfPhotoRequest request, CancellationToken ct = default)
+    {
+        if (request.ShelfId == Guid.Empty)
+        {
+            return HandlerResult<UploadShelfPhotoResponse>.Invalid("ShelfId is required.");
+        }
+
+        if (!await db.Shelves.AnyAsync(s => s.Id == request.ShelfId, ct))
+        {
+            return HandlerResult<UploadShelfPhotoResponse>.NotFound("Shelf not found.");
+        }
+
+        if (request.DeclaredLength is > MaxPhotoBytes)
+        {
+            return HandlerResult<UploadShelfPhotoResponse>.TooLarge("The photo is larger than the 20 MB limit.");
+        }
+
+        // Identify the format from the first bytes, not from the name or declared type.
+        var header = new byte[PhotoSignature.HeaderLength];
+        var headerLength = await ReadUpToAsync(request.Content, header, ct);
+        if (headerLength == 0)
+        {
+            return HandlerResult<UploadShelfPhotoResponse>.Invalid("The uploaded file is empty.");
+        }
+
+        var format = PhotoSignature.Detect(header.AsSpan(0, headerLength));
+        if (format == PhotoFormat.Unknown)
+        {
+            return HandlerResult<UploadShelfPhotoResponse>.UnsupportedMediaType("Only JPEG and PNG photos are accepted.");
+        }
+
+        if (!PhotoSignature.ExtensionMatches(request.FileName, format))
+        {
+            return HandlerResult<UploadShelfPhotoResponse>.UnsupportedMediaType(
+                "The file extension does not match the photo content. Only JPEG (.jpg, .jpeg) and PNG (.png) photos are accepted.");
+        }
+
+        var jobId = Guid.NewGuid();
+        var contentType = PhotoSignature.ContentType(format);
+        var key = $"shelves/{request.ShelfId:N}/{jobId:N}.{PhotoSignature.Extension(format)}";
+
+        using var metered = new MeteredHashingStream(request.Content, header[..headerLength], MaxPhotoBytes);
+        try
+        {
+            await storage.SaveAsync(key, metered, contentType, ct);
+        }
+        catch (PhotoTooLargeException)
+        {
+            await storage.DeleteAsync(key, CancellationToken.None);
+            return HandlerResult<UploadShelfPhotoResponse>.TooLarge("The photo is larger than the 20 MB limit.");
+        }
+
+        var hash = metered.Sha256Hex;
+
+        try
+        {
+            // A retried upload of the same photo must not create a second job.
+            var existing = await db.RecognitionJobs.AsNoTracking()
+                .Where(j => j.ShelfId == request.ShelfId && j.PhotoSha256 == hash && j.Status != RecognitionJobStatus.Failed)
+                .OrderBy(j => j.CreatedAt)
+                .Select(j => new { j.Id, j.Status })
+                .FirstOrDefaultAsync(ct);
+            if (existing is not null)
+            {
+                await storage.DeleteAsync(key, CancellationToken.None);
+                return HandlerResult<UploadShelfPhotoResponse>.Ok(Response(existing.Id, existing.Status, duplicate: true));
+            }
+
+            var job = RecognitionJob.CreatePending(request.ShelfId, key, contentType, metered.BytesRead, hash,
+                Math.Max(1, options.Value.MaxAttempts), clock.GetUtcNow().UtcDateTime);
+            job.Id = jobId;
+            db.RecognitionJobs.Add(job);
+            await db.SaveChangesAsync(ct);
+            await queue.EnqueueAsync(job.Id, ct);
+
+            return HandlerResult<UploadShelfPhotoResponse>.Ok(Response(job.Id, job.Status, duplicate: false));
+        }
+        catch
+        {
+            await storage.DeleteAsync(key, CancellationToken.None);
+            throw;
+        }
+    }
+
+    public static string StatusUrl(Guid jobId) => $"/api/recognition-jobs/{jobId}";
+
+    private static UploadShelfPhotoResponse Response(Guid id, RecognitionJobStatus status, bool duplicate) =>
+        new(id, status.ToString(), StatusUrl(id), duplicate);
+
+    private static async Task<int> ReadUpToAsync(Stream stream, byte[] buffer, CancellationToken ct)
+    {
+        var total = 0;
+        while (total < buffer.Length)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(total), ct);
+            if (read == 0)
+            {
+                break;
+            }
+
+            total += read;
+        }
+
+        return total;
+    }
+}

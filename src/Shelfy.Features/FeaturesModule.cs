@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shelfy.Features.Books;
 using Shelfy.Features.Recognition;
@@ -10,11 +11,11 @@ namespace Shelfy.Features;
 /// <summary>Single entry point that registers every v1 module. Trades, Messaging and Recommendations are not in v1.</summary>
 public static class FeaturesModule
 {
-    public static IServiceCollection AddShelfyFeatures(this IServiceCollection services) => services
+    public static IServiceCollection AddShelfyFeatures(this IServiceCollection services, IConfiguration configuration) => services
         .AddUsersModule()
         .AddShelvesModule()
         .AddBooksModule()
-        .AddRecognitionModule();
+        .AddRecognitionModule(configuration);
 
     public static IEndpointRouteBuilder MapShelfyFeatures(this IEndpointRouteBuilder app) => app
         .MapUsersModule()
