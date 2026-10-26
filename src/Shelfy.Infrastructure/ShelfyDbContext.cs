@@ -11,6 +11,7 @@ public class ShelfyDbContext(DbContextOptions<ShelfyDbContext> options) : DbCont
     public DbSet<ShelfBook> ShelfBooks => Set<ShelfBook>();
     public DbSet<RecognitionJob> RecognitionJobs => Set<RecognitionJob>();
     public DbSet<DetectedSpine> DetectedSpines => Set<DetectedSpine>();
+    public DbSet<UserCorrection> UserCorrections => Set<UserCorrection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

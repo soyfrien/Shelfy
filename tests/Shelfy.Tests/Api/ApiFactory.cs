@@ -33,6 +33,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     }
 
     public FakeBookResolver Resolver { get; } = new();
+    public FakeBookSearch Search { get; } = new();
     public string PhotoFolder => _photos;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -52,6 +53,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<ShelfyDbContext>(o => o.UseSqlite(_database.ConnectionString));
             services.RemoveAll<IBookResolver>();
             services.AddSingleton<IBookResolver>(Resolver);
+            services.RemoveAll<IBookSearch>();
+            services.AddSingleton<IBookSearch>(Search);
         });
     }
 

@@ -23,7 +23,7 @@ RecognitionJobProcessor
   | 1. open photo stream from IPhotoStorage
   | 2. ITextRecognizer.RecognizeAsync        lines (+ polygons, word confidence)
   | 3. SpineTextParser.Parse                 one candidate (title, author, isbn) per spine
-  | 4. IBookResolver.ResolveAsync            per spine, sequentially
+  | 4. UserCorrections lookup, then IBookResolver.ResolveAsync   per spine, sequentially (remembered fixes first, ADR-011)
   | 5. upsert Book by ISBN, Shelf.AddBook (Private, no duplicates), save DetectedSpine rows
   |    (tiles of a batch: drop repeats and fragments of spines other tiles of the batch already have, see "Tiles")
   v
@@ -33,6 +33,27 @@ GET /api/recognition-jobs/{jobId}   status, spines (resolved and unresolved), bo
 GET /api/shelves/{shelfId}/batches/{batchId}   progress per part + merged, de-duplicated spines and books of the batch
 ```
 
+## Tap to fix, remembered corrections, noise filter (ADR-011)
+
+A spine that matched no book can be fixed by hand. **Resolve** upserts the `Book` by ISBN-13, adds it to the shelf as Private (no duplicate
+`ShelfBooks`), marks the spine and every unresolved read of the same text on that shelf as resolved (`MatchSource = "User"`, score 1), and stores
+a `UserCorrections` row per text key. **Dismiss** sets `DetectedSpines.Dismissed` (the rows stay; the lists skip them).
+
+**Suggestions** call `IBookSearch` (OpenLibrary, then Google Books; merged by ISBN) with up to six lookups, in this order, stopping early once five
+candidates score 0.72 or more: `full` (the whole text, first 8 words), `parsed` (candidate title and author, structured), `longest` (the longest
+line alone), `swapped` (title and author the wrong way round), then `line` (up to three single lines). Every candidate is scored against the text
+that found it; below 0.3 is dropped; the best five are returned.
+
+**Remembered fixes.** Before it calls any catalog the worker loads `UserCorrections` for the keys of the photo's spines (one query) and uses a hit as
+the match (score 1, source `Memory`). Key = spine text lowercased, accents and punctuation removed, words joined by one space, at most 500 characters
+and at least four letters; the whole raw text first, then the parsed title when it is two words or one word of eight letters or more. A new fix of the
+same key replaces the book. A dismissed spine in a batch also suppresses a later read of the same spine by another tile.
+
+**Noise filter** (`SpineNoiseFilter`, list time only; the rows stay): hide a read when it has fewer than 3 letters (`short`), mostly non-letters
+(`punctuation`), only filler words (`filler`), a lone word under 4 letters (`short`), or low confidence (`unsure`: a lone word below 0.6, one or two words
+below 0.3, or fewer than 12 letters below 0.5); and, across the list, a read that is a fragment or a noisier repeat of another listed read
+(`duplicate`, using `SpineDeduper.IsSameSpine`). Lists are also de-duplicated ignoring case and punctuation. Tuned on the real shelf, see docs/requirements/recognition.md.
+
 ## Endpoints
 
 | Method | Path | Result |
@@ -40,7 +61,10 @@ GET /api/shelves/{shelfId}/batches/{batchId}   progress per part + merged, de-du
 | POST | `/api/shelves/{shelfId}/photos` | 202 with `{ jobId, status, statusUrl, duplicate }`; 400 no file; 404 unknown shelf; 413 over 20 MB; 415 not JPEG/PNG or wrong content type |
 | GET | `/api/recognition-jobs/{jobId}` | 200 job; 404 unknown job |
 | GET | `/api/shelves/{shelfId}/batches/{batchId}` | 200 batch progress; 404 unknown batch (or batch of another shelf) |
-| GET | `/api/shelves/{shelfId}/unmatched` | 200 `{ shelfId, spines: [{ text, candidateTitle }] }`: spines of the shelf's completed photos that matched no book, repeats removed, at most 1000; 404 unknown or hidden shelf. Read-only; used by the UI search |
+| GET | `/api/shelves/{shelfId}/unmatched[?includeHidden=true]` | 200 `{ shelfId, spines: [{ id, text, candidateTitle, lowQuality, reason }], hiddenLowQuality }`: spines of the shelf's completed photos that matched no book and were not dismissed, repeats removed, noise left out (counted in `hiddenLowQuality`; `includeHidden` lists them flagged with a reason), at most 1000; 404 unknown or hidden shelf. Read-only; used by the UI list and search |
+| GET | `/api/shelves/{shelfId}/spines/{spineId}/suggestions[?q=&take=]` | 200 `{ spineId, text, suggestions: [{ isbn13, title, author, coverUrl, score, source, strategy, bookId }], unavailable }`: up to 5 candidate books for the spine (strategies below), or with `q` the results of a title/author/ISBN search (up to 8); `unavailable` when the catalogs could not be reached; 404 unknown/hidden shelf or a spine of another shelf. Nothing is stored |
+| POST | `/api/shelves/{shelfId}/spines/{spineId}/resolve` | body `{ isbn13 \| bookId, title?, author?, coverUrl? }`: 200 `{ spineId, book, addedToShelf, spinesResolved, remembered }`; 400 no valid ISBN-13/bookId, or a new book without title; 404 unknown/hidden shelf, spine or book; 409 spine already matched to another book. Idempotent |
+| POST | `/api/shelves/{shelfId}/spines/{spineId}/dismiss` | 200 `{ spineId, dismissed, spinesDismissed }`; 404 as above; 409 spine already matched. Idempotent |
 | POST | `/api/shelves/{shelfId}/hide` | 204 (also when already hidden); 404 unknown shelf. Soft clear, see below |
 | DELETE | `/api/shelves/{shelfId}` | 204 always (also for an unknown or already deleted shelf). Hard clear, see below |
 

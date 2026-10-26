@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Shelfy.Features.Recognition.FixSpine;
 using Shelfy.Features.Recognition.GetRecognitionJob;
 using Shelfy.Features.Recognition.GetShelfUnmatched;
 using Shelfy.Features.Recognition.GetUploadBatch;
@@ -38,6 +39,9 @@ public static class RecognitionModule
         services.AddScoped<GetRecognitionJobHandler>();
         services.AddScoped<GetUploadBatchHandler>();
         services.AddScoped<GetShelfUnmatchedHandler>();
+        services.AddScoped<SpineSuggestionsHandler>();
+        services.AddScoped<ResolveSpineHandler>();
+        services.AddScoped<DismissSpineHandler>();
 
         // Photo storage: local filesystem by default; AzureBlob is a stub.
         services.AddSingleton<IPhotoStorage>(sp =>
@@ -71,7 +75,8 @@ public static class RecognitionModule
         .MapUploadShelfPhoto()
         .MapGetRecognitionJob()
         .MapGetUploadBatch()
-        .MapGetShelfUnmatched();
+        .MapGetShelfUnmatched()
+        .MapFixSpine();
 
     private static void AddOcr(IServiceCollection services)
     {
@@ -136,6 +141,24 @@ public static class RecognitionModule
             .AddTypedClient((http, sp) =>
                 new GoogleBooksResolver(http, sp.GetRequiredService<IOptions<ResolutionOptions>>().Value.GoogleBooksApiKey))
             .AddHttpMessageHandler(Retry);
+
+        // The tap-to-fix sheet lists several books: same providers, same order.
+        services.AddScoped<IBookSearch>(sp =>
+        {
+            var o = sp.GetRequiredService<IOptions<ResolutionOptions>>().Value;
+            var providers = new List<IBookSearch>();
+            if (o.OpenLibraryEnabled)
+            {
+                providers.Add(sp.GetRequiredService<OpenLibraryBookResolver>());
+            }
+
+            if (o.GoogleBooksEnabled)
+            {
+                providers.Add(sp.GetRequiredService<GoogleBooksResolver>());
+            }
+
+            return new CompositeBookSearch(providers, sp.GetRequiredService<ILogger<CompositeBookSearch>>());
+        });
 
         // OpenLibrary first, Google Books as fallback.
         services.AddScoped<IBookResolver>(sp =>

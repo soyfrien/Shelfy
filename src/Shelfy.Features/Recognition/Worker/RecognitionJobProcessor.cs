@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shelfy.Domain;
+using Shelfy.Features.Recognition.Corrections;
 using Shelfy.Features.Recognition.Ocr;
 using Shelfy.Features.Recognition.Parsing;
 using Shelfy.Features.Recognition.Resolution;
@@ -68,6 +69,9 @@ public class RecognitionJobProcessor(
         var tiled = job.TileCount > 1;
         var dropped = 0;
 
+        // Fixes users made earlier (ADR-011): spine texts they said are a particular book. Consulted before the catalogs.
+        var memory = await LoadCorrectionsAsync(candidates, ct);
+
         var booksByIsbn = new Dictionary<string, Book>();
         var resolved = 0;
         var added = 0;
@@ -90,11 +94,14 @@ public class RecognitionJobProcessor(
 
             // In a tile, a read that is only a person's name is most likely the author line of a spine whose title was cut off
             // by the tile edge (the whole spine is in a neighbouring tile). Looking it up as a title could add a wrong book.
-            var authorOnlyFragment = tiled && candidate.Author is null && candidate.Isbn is null &&
+            var remembered = memory.Count == 0 ? null : RememberedBook(candidate, memory);
+            var authorOnlyFragment = remembered is null && tiled && candidate.Author is null && candidate.Isbn is null &&
                                      TextNormalizer.LooksLikeAuthorName(candidate.Title);
-            var match = authorOnlyFragment || (candidate.Title.Length < 2 && candidate.Isbn is null)
-                ? null
-                : await ResolveAsync(candidate, opts.MinMatchScore, ct);
+            var match = remembered is not null
+                ? remembered
+                : authorOnlyFragment || (candidate.Title.Length < 2 && candidate.Isbn is null)
+                    ? null
+                    : await ResolveAsync(candidate, opts.MinMatchScore, ct);
             if (match is null || match.Score < opts.MinMatchScore || Isbn.Normalize(match.Isbn) is not { } isbn)
             {
                 // Unresolved: in a tiled photo, keep it only if it is not noise, not an edge fragment of a spine
@@ -217,7 +224,7 @@ public class RecognitionJobProcessor(
                 continue;
             }
 
-            if (peer.Status == SpineResolutionStatus.Resolved ||
+            if (peer.Status == SpineResolutionStatus.Resolved || peer.Dismissed ||
                 SpineDeduper.Quality(peer.RawText, peer.Confidence) >= quality)
             {
                 superseded.Clear();
@@ -243,6 +250,34 @@ public class RecognitionJobProcessor(
         }
 
         return match;
+    }
+
+    private async Task<Dictionary<string, UserCorrection>> LoadCorrectionsAsync(IReadOnlyList<SpineCandidate> candidates, CancellationToken ct)
+    {
+        var keys = candidates.SelectMany(c => CorrectionKey.For(c.RawText, c.Title)).Distinct().ToList();
+        if (keys.Count == 0)
+        {
+            return new Dictionary<string, UserCorrection>();
+        }
+
+        var found = await db.UserCorrections.Include(c => c.Book).Where(c => keys.Contains(c.TextKey)).ToListAsync(ct);
+        return found.Where(c => c.Book?.Isbn is not null).ToDictionary(c => c.TextKey);
+    }
+
+    /// <summary>A match from a remembered fix: score 1, source "Memory". The whole raw text is tried first, then the parsed title.</summary>
+    private BookMatch? RememberedBook(SpineCandidate candidate, Dictionary<string, UserCorrection> memory)
+    {
+        foreach (var key in CorrectionKey.For(candidate.RawText, candidate.Title))
+        {
+            if (memory.TryGetValue(key, out var correction) && correction.Book is { Isbn: { } isbn } book)
+            {
+                correction.UseCount++;
+                correction.UpdatedAt = clock.GetUtcNow().UtcDateTime;
+                return new BookMatch(isbn, book.Title, book.Author, book.CoverUrl, 1.0, DetectedSpine.SourceMemory);
+            }
+        }
+
+        return null;
     }
 
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];

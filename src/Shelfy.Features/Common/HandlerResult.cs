@@ -5,6 +5,7 @@ public enum HandlerStatus
     Ok,
     Invalid,
     NotFound,
+    Conflict,
     TooLarge,
     UnsupportedMediaType
 }
@@ -17,6 +18,7 @@ public record HandlerResult<T>(HandlerStatus Status, T? Value = default, string?
     public static HandlerResult<T> Ok(T value) => new(HandlerStatus.Ok, value);
     public static HandlerResult<T> Invalid(string error) => new(HandlerStatus.Invalid, default, error);
     public static HandlerResult<T> NotFound(string error) => new(HandlerStatus.NotFound, default, error);
+    public static HandlerResult<T> Conflict(string error) => new(HandlerStatus.Conflict, default, error);
     public static HandlerResult<T> TooLarge(string error) => new(HandlerStatus.TooLarge, default, error);
     public static HandlerResult<T> UnsupportedMediaType(string error) => new(HandlerStatus.UnsupportedMediaType, default, error);
 }

@@ -256,3 +256,52 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026021852_AddUserCorrections') THEN
+    ALTER TABLE "DetectedSpines" ADD "Dismissed" boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026021852_AddUserCorrections') THEN
+    CREATE TABLE "UserCorrections" (
+        "Id" uuid NOT NULL,
+        "TextKey" character varying(500) NOT NULL,
+        "BookId" uuid NOT NULL,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "UpdatedAt" timestamp with time zone NOT NULL,
+        "UseCount" integer NOT NULL,
+        CONSTRAINT "PK_UserCorrections" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_UserCorrections_Books_BookId" FOREIGN KEY ("BookId") REFERENCES "Books" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026021852_AddUserCorrections') THEN
+    CREATE INDEX "IX_UserCorrections_BookId" ON "UserCorrections" ("BookId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026021852_AddUserCorrections') THEN
+    CREATE UNIQUE INDEX "IX_UserCorrections_TextKey" ON "UserCorrections" ("TextKey");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261026021852_AddUserCorrections') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261026021852_AddUserCorrections', '8.0.32');
+    END IF;
+END $EF$;
+COMMIT;
+

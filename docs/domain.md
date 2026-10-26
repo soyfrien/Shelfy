@@ -15,7 +15,8 @@ The terms below are **frozen**. Do not rename them or introduce synonyms. Changi
 | Listing | A ShelfBook offered for Loan or Sale. Not in v1. |
 | Recommendation | A suggested Book for a User. Not in v1. |
 | RecognitionJob | One uploaded shelf photo and its processing state (Pending, Processing, Completed, Failed). Recognition module, ADR-008. |
-| DetectedSpine | One book spine found in a photo: raw OCR text, parsed title/author candidate and whether it resolved to a Book. Recognition module, ADR-008. |
+| DetectedSpine | One book spine found in a photo: raw OCR text, parsed title/author candidate and whether it resolved to a Book (by a catalog, a remembered correction, or the user). It can be dismissed ("not a book"). Recognition module, ADR-008, ADR-011. |
+| UserCorrection | A remembered fix: a normalized spine text mapped to a Book, consulted before the catalogs. Global until accounts exist. ADR-011. |
 
 ## AvailabilityStatus
 

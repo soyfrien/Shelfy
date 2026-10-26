@@ -4,7 +4,7 @@ using Shelfy.Features.Recognition.Parsing;
 namespace Shelfy.Features.Recognition.Resolution;
 
 /// <summary>Resolves via the OpenLibrary search API (https://openlibrary.org/search.json). No API key needed; identify politely with a User-Agent.</summary>
-public class OpenLibraryBookResolver(HttpClient http) : IBookResolver
+public class OpenLibraryBookResolver(HttpClient http) : IBookResolver, IBookSearch
 {
     public const string SourceName = "OpenLibrary";
     private const string Fields = "key,title,author_name,isbn,cover_i";
@@ -49,6 +49,39 @@ public class OpenLibraryBookResolver(HttpClient http) : IBookResolver
         }
 
         return best is null ? null : new BookMatch(best.Isbn!, best.Title, best.Author, best.CoverUrl, bestScore, SourceName);
+    }
+
+    public async Task<IReadOnlyList<BookMatch>> SearchAsync(BookQuery query, int limit, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query.Title))
+        {
+            return Array.Empty<BookMatch>();
+        }
+
+        var url = $"search.json?title={Uri.EscapeDataString(query.Title)}&limit={Math.Clamp(limit, 1, 20)}&fields={Fields}";
+        if (!string.IsNullOrWhiteSpace(query.Author))
+        {
+            url += $"&author={Uri.EscapeDataString(query.Author)}";
+        }
+
+        return (await SearchAsync(url, ct)).Where(d => d.Isbn is not null)
+            .Select(d => new BookMatch(d.Isbn!, d.Title, d.Author, d.CoverUrl, MatchScorer.Score(query, d.Title, d.Authors), SourceName))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<BookMatch>> SearchTextAsync(string text, int limit, CancellationToken ct = default)
+    {
+        text = text.Trim();
+        if (text.Length == 0)
+        {
+            return Array.Empty<BookMatch>();
+        }
+
+        var q = Isbn.Normalize(text) is { } isbn ? $"isbn:{isbn}" : text;
+        var url = $"search.json?q={Uri.EscapeDataString(q)}&limit={Math.Clamp(limit, 1, 20)}&fields={Fields}";
+        return (await SearchAsync(url, ct)).Where(d => d.Isbn is not null)
+            .Select(d => new BookMatch(Isbn.Normalize(text) ?? d.Isbn!, d.Title, d.Author, d.CoverUrl, 0, SourceName))
+            .ToList();
     }
 
     private async Task<List<Doc>> SearchAsync(string relativeUrl, CancellationToken ct)

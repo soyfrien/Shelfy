@@ -47,8 +47,9 @@
 
     <div id="unresolvedWrap" class="hidden unmatched-wrap">
       <h2 id="unresolvedTitle">Spines I couldn't match</h2>
-      <p class="notice">This is the text I read on these spines. They were not added to your shelf.</p>
+      <p class="notice">This is the text I read on these spines. They were not added to your shelf. <strong>Tap one to pick the right book.</strong></p>
       <div class="card"><ul class="unresolved" id="unresolved"></ul></div>
+      <p class="notice hidden-reads hidden" id="hiddenReads"><span id="hiddenReadsText"></span> <button class="link" id="toggleHidden" type="button">Show</button></p>
     </div>
 
     <h2>Share</h2>
@@ -73,9 +74,27 @@
     <div style="text-align:center"><button class="link" id="cancelClear" type="button">Cancel</button></div>
   </div>
 </div>
+<div class="modal hidden" id="fixModal" role="dialog" aria-modal="true" aria-labelledby="fixTitle">
+  <div class="sheet fix">
+    <h2 id="fixTitle">Which book is this?</h2>
+    <p class="notice" style="margin:0 0 4px">What I read on the spine:</p>
+    <p class="rawtext" id="fixRaw"></p>
+    <div class="notice fix-status hidden" id="fixStatus" role="status"></div>
+    <ul class="sugglist" id="fixList"></ul>
+    <form id="fixSearchForm" class="fix-search" role="search">
+      <input type="search" id="fixQuery" placeholder="Search title, author or ISBN" aria-label="Search title, author or ISBN" enterkeyhint="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="btn secondary" type="submit">Search</button>
+    </form>
+    <div class="parterr hidden" id="fixError" role="alert"></div>
+    <button class="btn danger" id="fixDismiss" type="button">Not a book / dismiss</button>
+    <div style="text-align:center"><button class="link" id="fixCancel" type="button">Cancel</button></div>
+  </div>
+</div>
+<div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 <script src="/search.js"></script>
 <script src="/shared.js"></script>
 <script src="/tiles.js"></script>
+<script src="/fix.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

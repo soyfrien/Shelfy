@@ -111,6 +111,35 @@ public class FakeBookResolver : IBookResolver
         new(isbn, title, author, null, score, "Fake");
 }
 
+/// <summary>Catalog search for the tap-to-fix sheet: answers from lists, records what was asked.</summary>
+public class FakeBookSearch : IBookSearch
+{
+    public string Name => "FakeSearch";
+
+    /// <summary>Answers for structured searches, keyed by query title (case-insensitive).</summary>
+    public Dictionary<string, List<BookMatch>> ByTitle { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Answers for free-text searches, keyed by the exact text (case-insensitive).</summary>
+    public Dictionary<string, List<BookMatch>> ByText { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public List<string> Asked { get; } = new();
+    public Exception? Throw { get; set; }
+
+    public Task<IReadOnlyList<BookMatch>> SearchAsync(BookQuery query, int limit, CancellationToken ct = default)
+    {
+        Asked.Add($"structured:{query.Title}|{query.Author}");
+        if (Throw is not null) throw Throw;
+        return Task.FromResult<IReadOnlyList<BookMatch>>(ByTitle.GetValueOrDefault(query.Title) ?? new List<BookMatch>());
+    }
+
+    public Task<IReadOnlyList<BookMatch>> SearchTextAsync(string text, int limit, CancellationToken ct = default)
+    {
+        Asked.Add("text:" + text);
+        if (Throw is not null) throw Throw;
+        return Task.FromResult<IReadOnlyList<BookMatch>>(ByText.GetValueOrDefault(text) ?? new List<BookMatch>());
+    }
+}
+
 /// <summary>Returns one scripted OCR result per call, in order (the tiles of one batch).</summary>
 public class ScriptedRecognizer(params OcrResult[] results) : ITextRecognizer
 {

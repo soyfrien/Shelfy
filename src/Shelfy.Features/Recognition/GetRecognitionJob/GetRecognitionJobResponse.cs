@@ -13,7 +13,9 @@ public record DetectedSpineDto(
     string? ResolvedIsbn,
     double? MatchScore,
     string? MatchSource,
-    ResolvedBookDto? Book);
+    ResolvedBookDto? Book,
+    Guid? Id = null,
+    string? NoiseReason = null);
 
 /// <param name="Status">Pending, Processing, Completed or Failed.</param>
 /// <param name="Attempts">How many times processing was started.</param>

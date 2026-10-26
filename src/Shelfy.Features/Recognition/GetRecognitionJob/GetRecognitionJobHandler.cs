@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Shelfy.Features.Recognition.Parsing;
 using Shelfy.Domain;
 using Shelfy.Features.Common;
 using Shelfy.Infrastructure;
@@ -26,7 +27,8 @@ public class GetRecognitionJobHandler(ShelfyDbContext db)
         var spineDtos = spines.Select(s => new DetectedSpineDto(
             s.Position, s.RawText, s.Confidence, s.CandidateTitle, s.CandidateAuthor, s.CandidateIsbn,
             s.Status.ToString(), s.ResolvedIsbn, s.MatchScore, s.MatchSource,
-            s.Book is null ? null : ToDto(s.Book))).ToList();
+            s.Book is null ? null : ToDto(s.Book),
+            s.Id, s.Book is null ? SpineNoiseFilter.Reason(s.RawText, s.Confidence) : null)).ToList();
 
         var books = spines.Where(s => s.Book is not null).Select(s => s.Book!)
             .GroupBy(b => b.Id).Select(g => ToDto(g.First())).ToList();

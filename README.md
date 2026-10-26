@@ -48,7 +48,7 @@ ASP.NET Core 8 Web API, .NET MAUI, EF Core 8 with PostgreSQL, modular monolith w
 src/
   Shelfy.sln
   Shelfy.Api              ASP.NET Core 8 host: Swagger, /health, wires modules together (no business logic)
-  Shelfy.Domain           User, Shelf, Book, ShelfBook, AvailabilityStatus, RecognitionJob, DetectedSpine (see docs/domain.md)
+  Shelfy.Domain           User, Shelf, Book, ShelfBook, AvailabilityStatus, RecognitionJob, DetectedSpine, UserCorrection (see docs/domain.md)
   Shelfy.Infrastructure   EF Core 8 + Npgsql DbContext, entity configurations, migrations
   Shelfy.Features         Vertical slices, one folder per module
     Users/                  module placeholder (no slices yet)
@@ -61,7 +61,10 @@ src/
       UploadShelfPhoto      POST /api/shelves/{shelfId}/photos   (multipart "file", 202 + job id)
       GetRecognitionJob     GET  /api/recognition-jobs/{jobId}
       GetUploadBatch        GET  /api/shelves/{shelfId}/batches/{batchId}   (progress and merged result of a tiled photo)
-      GetShelfUnmatched     GET  /api/shelves/{shelfId}/unmatched   (spine texts of the shelf's photos that matched no book; read-only)
+      GetShelfUnmatched     GET  /api/shelves/{shelfId}/unmatched   (spines of the shelf's photos that matched no book, noise filtered; read-only)
+      FixSpine              GET  /api/shelves/{shelfId}/spines/{spineId}/suggestions[?q=]   (tap to fix: candidate books / search box)
+                            POST /api/shelves/{shelfId}/spines/{spineId}/resolve   (pick a book; remembered as a correction, ADR-011)
+                            POST /api/shelves/{shelfId}/spines/{spineId}/dismiss   ("not a book")
       Storage/ Ocr/ Parsing/ Resolution/ Worker/   pipeline pieces behind interfaces, see docs/pipeline.md
 tests/
   Shelfy.Tests            xunit: domain, slice handlers, parser, resolvers, queue/worker (SQLite), API endpoints; recorded JSON fixtures

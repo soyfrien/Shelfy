@@ -147,3 +147,21 @@ Checks: `node tools/test-search.js`; then, with a TEST shelf only (`python3 tool
 `node tools/ui-check-search.js https://shelfy.ppdac.ltd <testShelfId>` (needs `puppeteer-core` and Chrome; it only reads the shelf it is given).
 Delete the test shelf afterwards with `DELETE /api/shelves/{id}`.
 
+## 10. Tap to fix, remembered corrections, noise filter (ADR-011)
+
+Adds the migration `AddUserCorrections` (`DetectedSpines.Dismissed boolean NOT NULL DEFAULT false` and the `UserCorrections` table with a unique index on `TextKey`),
+additive and harmless to the previous build. Order: apply `db/schema.idempotent.sql` first, then deploy the new build (delta: the four `Shelfy.*.dll`,
+`Shelfy.Api.deps.json` and `wwwroot/` `app.js`, `shared.js`, `index.html`, `style.css` and the new `fix.js`). No new configuration. The VM needs the same outbound access as the
+recognition pipeline (OpenLibrary, Google Books) for suggestions. Rollback: `/opt/shelfy.old` still works with the new column and table (`deploy.sh` keeps one old release).
+
+Checks: `dotnet test` (includes the endpoint, correction-memory and noise-filter tests); `node tools/ui-check-fix.js --mock` (headless mobile Chrome against a mock API);
+then live, on a TEST shelf only: `python3 tools/make-test-shelf.py --garble` writes `test-shelf-garbled.jpg` with one spine deliberately misspelled, upload it, and run
+`node tools/ui-check-fix.js https://shelfy.ppdac.ltd <testShelfId> <fragment> <query> <title>` (it changes that shelf). Upload the same photo to a second test shelf and
+the garbled spine matches by itself (`matchSource` `Memory`, no catalog call). Afterwards delete the test shelves with `DELETE /api/shelves/{id}` and the test rows from
+`UserCorrections` (`DELETE FROM "UserCorrections" WHERE "BookId" IN (...)` for the test books, or by `TextKey`); the test books in `Books` may stay or be deleted if nothing else uses them.
+To list fixes: `SELECT "TextKey", b."Title", "UseCount" FROM "UserCorrections" c JOIN "Books" b ON b."Id" = c."BookId";`
+
+Deployed 2026-10-25 (box/NY time): migration first (4 to 5 migrations), then the new build as a delta overlay, then a second one-DLL delta that ranks suggestions by similarity to the whole spine text
+(live: "Nuromanzir | William Gibson" now suggests Neuromancer first, 0.885, instead of any Gibson book). Live result on a TEST shelf: the headless-Chrome check tapped the garbled spine, picked
+Neuromancer, the book joined the shelf and the spine left the list. The same photo on a second test shelf then auto-matched with `matchSource` `Memory` and an empty unmatched list.
+Both test shelves, both test guests, the two `UserCorrections` rows and the test Neuromancer book were removed afterwards. Suggestions take about 8 seconds live (up to five catalog lookups in sequence).

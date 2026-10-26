@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Shelfy.Domain;
 using Shelfy.Features.Common;
 using Shelfy.Features.Recognition.GetRecognitionJob;
+using Shelfy.Features.Recognition.Parsing;
 using Shelfy.Infrastructure;
 
 namespace Shelfy.Features.Recognition.GetUploadBatch;
@@ -44,14 +45,16 @@ public class GetUploadBatchHandler(ShelfyDbContext db)
         var resolved = ordered.Where(s => s.Book is not null)
             .GroupBy(s => s.Book!.Id)
             .Select(g => g.OrderByDescending(s => s.MatchScore ?? 0).First());
-        var unresolved = ordered.Where(s => s.Book is null);
+        // Dismissed by the user ("not a book", ADR-011): kept in the database, no longer listed.
+        var unresolved = ordered.Where(s => s.Book is null && !s.Dismissed);
         var keep = resolved.Concat(unresolved)
             .OrderBy(s => partOf[s.RecognitionJobId]).ThenBy(s => s.Position).ToList();
 
         var spineDtos = keep.Select(s => new DetectedSpineDto(
             s.Position, s.RawText, s.Confidence, s.CandidateTitle, s.CandidateAuthor, s.CandidateIsbn,
             s.Status.ToString(), s.ResolvedIsbn, s.MatchScore, s.MatchSource,
-            s.Book is null ? null : new ResolvedBookDto(s.Book.Id, s.Book.Title, s.Book.Author, s.Book.Isbn, s.Book.CoverUrl))).ToList();
+            s.Book is null ? null : new ResolvedBookDto(s.Book.Id, s.Book.Title, s.Book.Author, s.Book.Isbn, s.Book.CoverUrl),
+            s.Id, s.Book is null ? SpineNoiseFilter.Reason(s.RawText, s.Confidence) : null)).ToList();
         var books = keep.Where(s => s.Book is not null).Select(s => s.Book!)
             .Select(b => new ResolvedBookDto(b.Id, b.Title, b.Author, b.Isbn, b.CoverUrl)).ToList();
 

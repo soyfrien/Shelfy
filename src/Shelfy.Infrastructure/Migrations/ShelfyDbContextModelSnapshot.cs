@@ -79,6 +79,9 @@ namespace Shelfy.Infrastructure.Migrations
                     b.Property<double?>("Confidence")
                         .HasColumnType("double precision");
 
+                    b.Property<bool>("Dismissed")
+                        .HasColumnType("boolean");
+
                     b.Property<double?>("MatchScore")
                         .HasColumnType("double precision");
 
@@ -275,6 +278,39 @@ namespace Shelfy.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("Shelfy.Domain.UserCorrection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BookId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TextKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UseCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookId");
+
+                    b.HasIndex("TextKey")
+                        .IsUnique();
+
+                    b.ToTable("UserCorrections", (string)null);
+                });
+
             modelBuilder.Entity("Shelfy.Domain.DetectedSpine", b =>
                 {
                     b.HasOne("Shelfy.Domain.Book", "Book")
@@ -320,6 +356,17 @@ namespace Shelfy.Infrastructure.Migrations
                     b.HasOne("Shelfy.Domain.Shelf", null)
                         .WithMany("Books")
                         .HasForeignKey("ShelfId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Book");
+                });
+
+            modelBuilder.Entity("Shelfy.Domain.UserCorrection", b =>
+                {
+                    b.HasOne("Shelfy.Domain.Book", "Book")
+                        .WithMany()
+                        .HasForeignKey("BookId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

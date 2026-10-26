@@ -10,8 +10,8 @@ public static class GetShelfUnmatchedEndpoint
     public static IEndpointRouteBuilder MapGetShelfUnmatched(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/shelves/{shelfId:guid}/unmatched",
-                async (Guid shelfId, GetShelfUnmatchedHandler handler, CancellationToken ct) =>
-                    (await handler.HandleAsync(shelfId, ct)).ToHttpResult())
+                async (Guid shelfId, bool? includeHidden, GetShelfUnmatchedHandler handler, CancellationToken ct) =>
+                    (await handler.HandleAsync(shelfId, includeHidden ?? false, ct)).ToHttpResult())
             .WithName("GetShelfUnmatched")
             .WithTags("Recognition")
             .Produces<ShelfUnmatchedResponse>()

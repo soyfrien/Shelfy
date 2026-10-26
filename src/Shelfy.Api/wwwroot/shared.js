@@ -56,7 +56,9 @@
   // ---- search bar above a cover grid ----
   // createSearch({ ul, unmatchedUl, unmatchedWrap, unmatchedTitle }) puts a sticky bar before `ul` and returns
   //   setBooks(books)      show these books (existing cards are kept, so covers don't flash while photos are still being read)
-  //   setUnmatched(texts)  raw spine texts that were not matched to a book (home page only); they are searched too
+  //   setUnmatched(items, opts)  spines that were not matched to a book (home page only); they are searched too.
+  //                        Items are strings or { id, text, lowQuality }. opts.hidden = how many low-quality reads are not listed.
+  //                        With o.onUnmatchedTap, an item with an id is tappable (tap to fix) and calls it with the item.
   //   reset()              clear the query
   function createSearch(o) {
     var S = window.ShelfySearch, ul = o.ul;
@@ -93,7 +95,8 @@
     ul.parentNode.insertBefore(empty, ul);
 
     var items = [];          // { id, book, li }
-    var unmatched = [];      // { text, li }
+    var unmatched = [];      // { text, li, item }
+    var hiddenReads = 0;     // low-quality reads that are not listed (the list is kept visible for them)
     var toks = [], query = '';
 
     function sorted() {
@@ -140,7 +143,7 @@
           : 'Check “Spines I couldn’t match” below if there is one: the book may not have been recognized. Try fewer words, or just the author’s last name.';
       }
       if (o.unmatchedWrap) {
-        var any = unmatched.length > 0;
+        var any = unmatched.length > 0 || hiddenReads > 0;
         o.unmatchedWrap.classList.toggle('hidden', !any || (searching && um === 0));
         if (o.unmatchedTitle) o.unmatchedTitle.textContent = searching ? 'Spines I couldn’t match · ' + um + ' of ' + unmatched.length : 'Spines I couldn’t match';
       }
@@ -170,12 +173,21 @@
         ul.textContent = '';
         apply();
       },
-      setUnmatched: function (texts) {
+      setUnmatched: function (items, opts) {
         if (!o.unmatchedUl) return;
         o.unmatchedUl.textContent = '';
-        unmatched = (texts || []).map(function (t) {
-          var li = document.createElement('li'); li.textContent = t; o.unmatchedUl.appendChild(li);
-          return { text: t, li: li, marked: false };
+        hiddenReads = (opts && opts.hidden) || 0;
+        unmatched = (items || []).map(function (t) {
+          var item = typeof t === 'string' ? { text: t } : t;
+          var li = document.createElement('li'); li.textContent = item.text; o.unmatchedUl.appendChild(li);
+          if (item.lowQuality) li.classList.add('lowq');
+          if (o.onUnmatchedTap && item.id) {
+            li.classList.add('tap'); li.tabIndex = 0; li.setAttribute('role', 'button');
+            li.setAttribute('aria-label', 'Fix: ' + item.text);
+            li.addEventListener('click', function () { o.onUnmatchedTap(item, li); });
+            li.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onUnmatchedTap(item, li); } });
+          }
+          return { text: item.text, li: li, item: item, marked: false };
         });
         apply();
       },

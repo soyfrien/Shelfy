@@ -27,8 +27,19 @@ public class DetectedSpine
     /// <summary>Title+author match score 0..1 of the accepted match.</summary>
     public double? MatchScore { get; set; }
 
-    /// <summary>Which resolver matched: OpenLibrary, GoogleBooks.</summary>
+    /// <summary>Which resolver matched: OpenLibrary, GoogleBooks; "Memory" for a remembered correction, "User" when the user picked the book.</summary>
     public string? MatchSource { get; set; }
+
+    /// <summary>
+    /// The user said "this is not a book" (tap to fix, ADR-011): the spine is no longer listed as unmatched. The read is kept.
+    /// </summary>
+    public bool Dismissed { get; set; }
+
+    /// <summary>The ways a spine ends up resolved other than by a catalog lookup.</summary>
+    public const string SourceUser = "User";
+    public const string SourceMemory = "Memory";
+
+    public bool IsResolvedByUser => Status == SpineResolutionStatus.Resolved && MatchSource == SourceUser;
 
     public void MarkResolved(Book book, double score, string source)
     {
@@ -37,5 +48,6 @@ public class DetectedSpine
         ResolvedIsbn = book.Isbn;
         MatchScore = score;
         MatchSource = source;
+        Dismissed = false;
     }
 }

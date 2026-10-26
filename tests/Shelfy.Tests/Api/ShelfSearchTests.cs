@@ -68,12 +68,12 @@ public class ShelfSearchTests : IDisposable
         var shelf = await NewShelfAsync();
         var other = await NewShelfAsync();
         var t = new DateTime(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc);
-        await AddJobAsync(shelf, t, RecognitionJobStatus.Completed, ("Dune", true), ("TOLKIEN HOBBT", false), ("zzz", false), ("  ", false));
+        await AddJobAsync(shelf, t, RecognitionJobStatus.Completed, ("Dune", true), ("TOLKIEN HOBBT", false), ("ZYGOTE QUARTET", false), ("  ", false));
         await AddJobAsync(shelf, t.AddMinutes(1), RecognitionJobStatus.Completed, ("tolkien hobbt", false), ("Asimov Foundation", false));
         await AddJobAsync(shelf, t.AddMinutes(2), RecognitionJobStatus.Failed, ("from a failed job", false));
         await AddJobAsync(other, t, RecognitionJobStatus.Completed, ("someone else's spine", false));
 
-        Assert.Equal(new[] { "TOLKIEN HOBBT", "zzz", "Asimov Foundation" }, await UnmatchedAsync(shelf));
+        Assert.Equal(new[] { "TOLKIEN HOBBT", "ZYGOTE QUARTET", "Asimov Foundation" }, await UnmatchedAsync(shelf));
         Assert.Equal(new[] { "someone else's spine" }, await UnmatchedAsync(other));
     }
 

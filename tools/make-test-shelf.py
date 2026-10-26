@@ -2,6 +2,8 @@
 """Generates synthetic bookshelf photos for end-to-end recognition tests. Needs Pillow.
 
   python3 tools/make-test-shelf.py                 # test-shelf.jpg: 4 rotated spines (as before)
+  python3 tools/make-test-shelf.py --garble        # test-shelf-garbled.jpg: the 4 spines, but "Neuromancer" is misspelled so it will not match
+                                                   # (used to test tap to fix and remembered corrections; the fix is Neuromancer by William Gibson)
   python3 tools/make-test-shelf.py --wide          # wide-shelf.jpg: 16 spines, 6000x1500, plus wide-shelf.json (expected books)
   python3 tools/make-test-shelf.py --wide --tiles  # also writes wide-shelf-tile-1.jpg ... using the same plan as wwwroot/tiles.js
 
@@ -62,14 +64,16 @@ def draw_spine(img, x, top, bot, sw, title, author, bg, fg):
     img.paste(sp, (x, top))
 
 
-def small():
+def small(garble=False):
     W, H = 1300, 1000
     img = Image.new("RGB", (W, H), (120, 85, 55))
     x, sw, gap, top, bot = 70, 270, 30, 60, H - 60
     for t, a, bg, fg in SMALL:
+        if garble and t == "Neuromancer":
+            t = "Nuromanzir"
         draw_spine(img, x, top, bot, sw, t, a, bg, fg)
         x += sw + gap
-    img.save("test-shelf.jpg", quality=90)
+    img.save("test-shelf-garbled.jpg" if garble else "test-shelf.jpg", quality=90)
 
 
 def plan_tiles(w, h):
@@ -116,4 +120,4 @@ if __name__ == "__main__":
     if "--wide" in sys.argv:
         wide("--tiles" in sys.argv)
     else:
-        small()
+        small("--garble" in sys.argv)

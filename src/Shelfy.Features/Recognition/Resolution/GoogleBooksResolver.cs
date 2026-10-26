@@ -4,7 +4,7 @@ using Shelfy.Features.Recognition.Parsing;
 namespace Shelfy.Features.Recognition.Resolution;
 
 /// <summary>Resolves via the Google Books volumes API. The API key is optional (lower quota without it).</summary>
-public class GoogleBooksResolver(HttpClient http, string? apiKey = null) : IBookResolver
+public class GoogleBooksResolver(HttpClient http, string? apiKey = null) : IBookResolver, IBookSearch
 {
     public const string SourceName = "GoogleBooks";
     private const int MaxResults = 8;
@@ -48,6 +48,39 @@ public class GoogleBooksResolver(HttpClient http, string? apiKey = null) : IBook
         }
 
         return best is null ? null : new BookMatch(best.Isbn!, best.Title, best.Author, best.CoverUrl, bestScore, SourceName);
+    }
+
+    public async Task<IReadOnlyList<BookMatch>> SearchAsync(BookQuery query, int limit, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query.Title))
+        {
+            return Array.Empty<BookMatch>();
+        }
+
+        var q = $"intitle:{Sanitize(query.Title)}";
+        if (!string.IsNullOrWhiteSpace(query.Author))
+        {
+            q += $" inauthor:{Sanitize(query.Author)}";
+        }
+
+        return (await SearchAsync(q, Math.Clamp(limit, 1, 20), ct)).Where(v => v.Isbn is not null)
+            .Select(v => new BookMatch(v.Isbn!, v.Title, v.Author, v.CoverUrl, MatchScorer.Score(query, v.Title, v.Authors), SourceName))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<BookMatch>> SearchTextAsync(string text, int limit, CancellationToken ct = default)
+    {
+        text = text.Trim();
+        if (text.Length == 0)
+        {
+            return Array.Empty<BookMatch>();
+        }
+
+        var isbn = Isbn.Normalize(text);
+        var q = isbn is not null ? $"isbn:{isbn}" : text.Replace("\"", " ");
+        return (await SearchAsync(q, Math.Clamp(limit, 1, 20), ct)).Where(v => v.Isbn is not null)
+            .Select(v => new BookMatch(isbn ?? v.Isbn!, v.Title, v.Author, v.CoverUrl, 0, SourceName))
+            .ToList();
     }
 
     private static string Sanitize(string s) => s.Replace("\"", " ").Replace(":", " ");

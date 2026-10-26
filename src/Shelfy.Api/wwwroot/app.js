@@ -15,10 +15,11 @@
     result: $('result'), resultTitle: $('resultTitle'), resultNote: $('resultNote'), books: $('books'),
     unresolvedWrap: $('unresolvedWrap'), unresolved: $('unresolved'), shareLink: $('shareLink'), copyBtn: $('copyBtn'),
     file: $('file'), newShelf: $('newShelf'), clearBtn: $('clearBtn'), clearModal: $('clearModal'), hideBtn: $('hideBtn'),
-    deleteBtn: $('deleteBtn'), cancelClear: $('cancelClear'), clearError: $('clearError'), clearedNote: $('clearedNote'), clearedText: $('clearedText'), unresolvedTitle: $('unresolvedTitle'), addMore: $('addMore'), parts: $('parts'), partErrors: $('partErrors')
+    deleteBtn: $('deleteBtn'), cancelClear: $('cancelClear'), clearError: $('clearError'), clearedNote: $('clearedNote'), clearedText: $('clearedText'), unresolvedTitle: $('unresolvedTitle'), hiddenReads: $('hiddenReads'), hiddenReadsText: $('hiddenReadsText'), toggleHidden: $('toggleHidden'), addMore: $('addMore'), parts: $('parts'), partErrors: $('partErrors')
   };
-  var search = window.Shelfy.createSearch({ ul: els.books, unmatchedUl: els.unresolved, unmatchedWrap: els.unresolvedWrap, unmatchedTitle: els.unresolvedTitle });
-  var busy = false, unmatchedSeq = 0;
+  var search = window.Shelfy.createSearch({ ul: els.books, unmatchedUl: els.unresolved, unmatchedWrap: els.unresolvedWrap, unmatchedTitle: els.unresolvedTitle,
+    onUnmatchedTap: function (item, li) { openFix(item, li); } });
+  var busy = false, unmatchedSeq = 0, showLowQuality = false;
   var run = null;   // the batch being processed: { shelfId, batchId, n, parts[], ... }
 
   // While photos are being read, the buttons that start another photo or a new shelf are switched off.
@@ -336,12 +337,57 @@
     // While photos are still being read, list what this batch could not match; once it is over (or when the page is
     // just opened) list everything that is unmatched on the whole shelf, from the server.
     var seq = ++unmatchedSeq;
-    var texts = function (list) { return list.map(function (s) { return s.rawText || s.candidateTitle || '(unreadable)'; }); };
-    if (batch && !(batch.completed + batch.failed >= batch.parts && batch.pending + batch.processing === 0)) search.setUnmatched(texts(un));
-    else api('GET', '/api/shelves/' + shelf.id + '/unmatched').then(function (r) {
-      if (seq === unmatchedSeq) search.setUnmatched((r.spines || []).map(function (s) { return s.text || s.candidateTitle; }));
-    }, function () { if (seq === unmatchedSeq) search.setUnmatched(texts(un)); });
+    var inFlight = batch && !(batch.completed + batch.failed >= batch.parts && batch.pending + batch.processing === 0);
+    if (inFlight) {
+      var lowCount = un.filter(function (s) { return s.noiseReason; }).length;
+      var shown = un.filter(function (s) { return !s.noiseReason || showLowQuality; });
+      setHiddenNote(lowCount);
+      search.setUnmatched(shown.map(function (s) { return { id: s.id, text: s.rawText || s.candidateTitle || '(unreadable)', lowQuality: !!s.noiseReason }; }),
+        { hidden: showLowQuality ? 0 : lowCount });
+    } else loadUnmatched(shelf.id, seq);
     show(els.result, true);
+  }
+
+  // The unmatched list from the server: poor reads (too short, unsure, repeats) are counted, not listed, unless asked for.
+  function loadUnmatched(shelfId, seq) {
+    api('GET', '/api/shelves/' + shelfId + '/unmatched' + (showLowQuality ? '?includeHidden=true' : '')).then(function (r) {
+      if (seq !== unmatchedSeq) return;
+      var spines = r.spines || [];
+      setHiddenNote(r.hiddenLowQuality || 0);
+      search.setUnmatched(spines.map(function (s) { return { id: s.id, text: s.text || s.candidateTitle, lowQuality: !!s.lowQuality }; }),
+        { hidden: showLowQuality ? 0 : (r.hiddenLowQuality || 0) });
+    }, function () { /* the list stays as it was; the next refresh tries again */ });
+  }
+  function setHiddenNote(n) {
+    var any = n > 0;
+    els.hiddenReadsText.textContent = showLowQuality
+      ? n + (n === 1 ? ' low-quality read is shown in grey.' : ' low-quality reads are shown in grey.')
+      : n + (n === 1 ? ' low-quality read is hidden (very short, unsure or a repeat).' : ' low-quality reads are hidden (very short, unsure or repeats).');
+    els.toggleHidden.textContent = showLowQuality ? 'Hide them' : 'Show';
+    show(els.hiddenReads, any);
+  }
+  els.toggleHidden.addEventListener('click', function () {
+    showLowQuality = !showLowQuality;
+    var id = ls(KEY_SHELF);
+    if (id) loadUnmatched(id, ++unmatchedSeq);
+  });
+
+  // ---- tap to fix (ADR-011): the bottom sheet lives in fix.js ----
+  function openFix(item, li) {
+    var id = ls(KEY_SHELF);
+    if (!id || !window.ShelfyFix) return;
+    if (busy) { window.ShelfyFix.toast('Wait until the photo has been read, then tap the spine again.'); return; }
+    window.ShelfyFix.open(id, item, { onChanged: function () { refreshAfterFix(id); } }, li);
+  }
+  function refreshAfterFix(shelfId) {
+    if (ls(KEY_SHELF) !== shelfId) return;
+    var seq = ++unmatchedSeq;
+    api('GET', '/api/shelves/' + shelfId).then(function (shelf) {
+      var books = shelf.books || [];
+      els.resultTitle.textContent = books.length ? 'Your shelf · ' + books.length + (books.length === 1 ? ' book' : ' books') : 'Your shelf';
+      search.setBooks(books);
+    }, function () { /* keep what is shown */ });
+    loadUnmatched(shelfId, seq);
   }
 
   function loadExisting() {
@@ -397,7 +443,7 @@
   els.newShelf.addEventListener('click', function () {
     if (!confirm('Start a new, empty shelf? Your old shelf keeps its link.')) return;
     ls(KEY_SHELF, null);
-    search.reset(); search.setBooks([]); search.setUnmatched([]);
+    search.reset(); search.setBooks([]); search.setUnmatched([]); setHiddenNote(0);
     show(els.result, false);
     show(els.pick, true);
     window.scrollTo(0, 0);
@@ -432,7 +478,7 @@
       show(els.clearModal, false);
       show(els.result, false); show(els.progress, false); show(els.errorBox, false);
       show(els.pick, true);
-      unmatchedSeq++; search.reset(); search.setBooks([]); search.setUnmatched([]);
+      unmatchedSeq++; search.reset(); search.setBooks([]); search.setUnmatched([]); setHiddenNote(0);
       els.clearedText.textContent = hard ? 'Deleted: the shelf and its photos are gone.' : 'Hidden: it is no longer shown or shared.';
       show(els.clearedNote, true);
       window.scrollTo(0, 0);
