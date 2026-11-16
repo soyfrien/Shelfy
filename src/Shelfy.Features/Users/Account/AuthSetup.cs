@@ -51,12 +51,13 @@ public static class AuthSetup
             o.ExpireTimeSpan = TimeSpan.FromDays(30);
             o.SlidingExpiration = true;
             o.LoginPath = "/signin.html";
-            o.Events = new CookieAuthenticationEvents
-            {
-                OnRedirectToLogin = ctx => Deny(ctx, StatusCodes.Status401Unauthorized, "Sign in first."),
-                OnRedirectToAccessDenied = ctx => Deny(ctx, StatusCodes.Status403Forbidden, "Not allowed.")
-            };
+            // Only swap the two redirects: the events object already carries Identity's security-stamp check (OnValidatePrincipal),
+            // which signs out cookies of deleted accounts and of accounts whose stamp changed (e.g. a password change).
+            o.Events.OnRedirectToLogin = ctx => Deny(ctx, StatusCodes.Status401Unauthorized, "Sign in first.");
+            o.Events.OnRedirectToAccessDenied = ctx => Deny(ctx, StatusCodes.Status403Forbidden, "Not allowed.");
         });
+        var stampMinutes = configuration.GetValue("Auth:StampValidationMinutes", 5.0);
+        services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.FromMinutes(stampMinutes));
         services.AddAuthorization();
         return services;
     }

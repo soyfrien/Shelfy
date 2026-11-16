@@ -29,7 +29,7 @@
     } else if (my && my.actions.indexOf('received') >= 0) {
       box.appendChild(receiveUi(me));
     } else if (v.isOwner) {
-      if (c.status === 'InTransit' && c.holderName !== c.ownerName) {
+      if (v.awaitingReturn) {
         box.appendChild(button('I got it back', '', function () { receive(null); }));
       }
       var lab = el('a', 'btn secondary', 'Print the QR label'); lab.href = '/api/copies/' + c.id + '/label.svg'; lab.target = '_blank'; box.appendChild(lab);

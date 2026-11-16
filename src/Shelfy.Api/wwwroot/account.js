@@ -20,7 +20,13 @@
     if (!mePromise || refresh) mePromise = api('GET', '/api/account/me').catch(function () { return null; });
     return mePromise;
   }
-  function signOut() { return api('POST', '/api/account/logout').then(function () { location.href = '/'; }); }
+  function signOut() {
+    return api('POST', '/api/account/logout').then(function () {
+      // The last shelf was the account's; a signed-out visitor starts a fresh guest shelf instead of hitting 401 on it.
+      try { localStorage.removeItem('shelfy.shelfId'); } catch (e) { /* storage off */ }
+      location.href = '/';
+    });
+  }
   function el(tag, cls, text) {
     var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e;
   }
@@ -50,7 +56,7 @@
           again.onclick = function () {
             again.disabled = true;
             api('POST', '/api/account/confirm-email/resend').then(function () { again.textContent = 'Sent. Check your inbox.'; })
-              .catch(function (x) { again.textContent = x.message; });
+              .catch(function (x) { again.textContent = x.message + ' Send it again'; again.disabled = false; });
           };
           bar.appendChild(again);
           header.parentNode.insertBefore(bar, header.nextSibling);

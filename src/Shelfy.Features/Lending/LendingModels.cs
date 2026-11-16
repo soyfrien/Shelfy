@@ -14,7 +14,8 @@ public record ReceiveRequest(Guid? ShelfId = null);
 // Responses
 
 /// <summary>What the caller may do with a copy right now (all false for an anonymous caller).</summary>
-public record CopyViewerDto(bool SignedIn, bool IsOwner, bool IsHolder, bool CanBorrow, bool CanReserve, LoanSummaryDto? MyLoan);
+/// <summary><see cref="AwaitingReturn"/>: the viewer owns the copy and it has been mailed back to them (show "I got it back").</summary>
+public record CopyViewerDto(bool SignedIn, bool IsOwner, bool IsHolder, bool CanBorrow, bool CanReserve, LoanSummaryDto? MyLoan, bool AwaitingReturn = false);
 
 /// <summary>A copy on a shelf page.</summary>
 public record ShelfCopyDto(

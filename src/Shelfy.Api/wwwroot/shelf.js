@@ -38,8 +38,30 @@
   var modal = el('div', 'modal hidden'); modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true');
   var sheet = el('div', 'sheet lend'); modal.appendChild(sheet); document.body.appendChild(modal);
   modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-  function close() { modal.classList.add('hidden'); document.body.classList.remove('sheet-open'); }
+  modal.setAttribute('aria-label', 'Borrow or lend this book');
+  // Keyboard: focus moves into the sheet, Tab stays inside it, the shelf behind is inert, and focus returns to the book on close.
+  var opener = null, page = document.querySelector('.wrap');
+  function isOpen() { return !modal.classList.contains('hidden'); }
+  function focusables() {
+    return Array.prototype.filter.call(sheet.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'),
+      function (n) { return n.offsetParent !== null; });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!isOpen()) return;
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key !== 'Tab') return;
+    var f = focusables(); if (!f.length) { e.preventDefault(); return; }
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !sheet.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !sheet.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+  });
+  function close() {
+    if (!isOpen()) return;
+    modal.classList.add('hidden'); document.body.classList.remove('sheet-open');
+    if (page) { page.removeAttribute('inert'); page.removeAttribute('aria-hidden'); }
+    if (opener && opener.focus && document.contains(opener)) opener.focus();
+    opener = null;
+  }
   function btn(text, cls, fn) { var b = el('button', 'btn ' + (cls || ''), text); b.type = 'button'; b.onclick = fn; return b; }
   function err(msg) { var p = sheet.querySelector('.formerr'); p.textContent = msg; p.classList.remove('hidden'); }
   function act(promise) { return promise.then(function () { return load(); }).then(function () { if (current) openSheet(current); }, function (e) { err(e.message); }); }
@@ -65,7 +87,11 @@
     }
     sheet.appendChild(el('p', 'formerr hidden'));
     var c2 = el('div'); c2.style.textAlign = 'center'; c2.appendChild(btn('Close', 'link', close)); c2.firstChild.className = 'link'; sheet.appendChild(c2);
+    if (!isOpen()) opener = document.activeElement;
     modal.classList.remove('hidden'); document.body.classList.add('sheet-open');
+    if (page) { page.setAttribute('inert', ''); page.setAttribute('aria-hidden', 'true'); }
+    sheet.setAttribute('tabindex', '-1');
+    var f = focusables(); (f[0] || sheet).focus();
   }
 
   function copyRow(c) {

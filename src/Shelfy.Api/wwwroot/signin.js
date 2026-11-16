@@ -2,8 +2,12 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var next = new URLSearchParams(location.search).get('next') || '/';
-  if (!/^\/(?!\/)/.test(next)) next = '/';                  // only local paths, never another site
+  // Only a path on this site, never another one ('//x', '/\\x' and odd schemes all resolve to another origin and are dropped).
+  var next = '/';
+  try {
+    var u = new URL(new URLSearchParams(location.search).get('next') || '/', location.origin);
+    if (u.origin === location.origin) next = u.pathname + u.search + u.hash;
+  } catch (e) { next = '/'; }
   function tab(up) {
     $('tabIn').classList.toggle('on', !up); $('tabUp').classList.toggle('on', up);
     $('formIn').classList.toggle('hidden', up); $('formUp').classList.toggle('hidden', !up);

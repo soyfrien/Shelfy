@@ -93,6 +93,12 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
                         return HandlerResult<LoanDto>.Invalid("Add your mailing address to your profile first, so the book can come back to you.");
                     }
 
+                    // A reservation needs no address, and the waitlist can promote it to a request: check the reader's address now.
+                    if (!await HasAddressAsync(loan.BorrowerId, ct))
+                    {
+                        return HandlerResult<LoanDto>.Invalid(ReaderHasNoAddress);
+                    }
+
                     Domain.Lending.Approve(loan, copy, me.Value, now);
                     break;
                 case LendingActions.Decline:
@@ -123,6 +129,12 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
                     Domain.Lending.MarkReturned(loan, copy, loans, movements, me.Value, now);
                     break;
                 case LendingActions.PassAlong:
+                    var nextReader = Domain.Lending.NextInLine(loans);
+                    if (nextReader is not null && !await HasAddressAsync(nextReader.BorrowerId, ct))
+                    {
+                        return HandlerResult<LoanDto>.Invalid(ReaderHasNoAddress);
+                    }
+
                     Domain.Lending.ApprovePassAlong(loan, copy, loans, me.Value, now);
                     break;
                 default:
@@ -281,6 +293,8 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
     }
 
     private static bool IsParty(Loan loan, Guid me) => loan.BorrowerId == me || loan.OwnerId == me || loan.SenderId == me;
+
+    public const string ReaderHasNoAddress = "The reader hasn't added a mailing address yet, so there's nowhere to send the book. Try again once they have.";
 
     public const string ConfirmEmailFirst = "Confirm your email first: open the link we emailed you when you signed up.";
 

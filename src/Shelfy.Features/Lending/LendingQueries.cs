@@ -50,6 +50,7 @@ internal static class LendingQueries
             true, isOwner, holder,
             CanBorrow: free && copy.Status == CopyStatus.Available,
             CanReserve: free && copy.Status is CopyStatus.Reserved or CopyStatus.OnLoan or CopyStatus.InTransit,
-            MyLoan: mine is null ? null : new LoanSummaryDto(mine.Id, mine.Status, LendingActions.For(mine, copy, loans, me)));
+            MyLoan: mine is null ? null : new LoanSummaryDto(mine.Id, mine.Status, LendingActions.For(mine, copy, loans, me)),
+            AwaitingReturn: isOwner && loans.Any(l => l.Status == LoanStatus.ReturnMailed));
     }
 }

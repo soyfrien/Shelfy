@@ -239,7 +239,11 @@ public class LendingEndpointTests : IDisposable
         Assert.True(onAliceShelf.EnumerateArray().Single(c => c.GetProperty("id").GetGuid() == copyId).GetProperty("isVisiting").GetBoolean());
 
         await StepAsync(owner, loanId, "request-return");
+        Assert.False((await Json(await owner.GetAsync($"/api/copies/{copyId}"))).GetProperty("viewer").GetProperty("awaitingReturn").GetBoolean());
         await StepAsync(alice, loanId, "return-mailed");
+        // "I got it back" comes from the return shipment, not from comparing names.
+        Assert.True((await Json(await owner.GetAsync($"/api/copies/{copyId}"))).GetProperty("viewer").GetProperty("awaitingReturn").GetBoolean());
+        Assert.False((await Json(await alice.GetAsync($"/api/copies/{copyId}"))).GetProperty("viewer").GetProperty("awaitingReturn").GetBoolean());
         var home = await owner.PostAsJsonAsync($"/api/copies/by-code/{code}/received", new { });   // owner scans it when it comes home
         Assert.Equal("Returned", (await Json(home)).GetProperty("status").GetString());
 
@@ -273,6 +277,62 @@ public class LendingEndpointTests : IDisposable
         var forShelf = await Json(await bob.GetAsync($"/api/copies/{copyId}"));
         Assert.Equal(1, forShelf.GetProperty("waiting").GetInt32());
         Assert.Equal("Waitlisted", forShelf.GetProperty("viewer").GetProperty("myLoan").GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Approving_a_promoted_reservation_needs_the_readers_address()
+    {
+        var (owner, ownerId) = await SignUpAsync("Louis");
+        var (alice, _) = await SignUpAsync("Alice");
+        var (nomad, _) = await SignUpAsync("Nomad", address: null);
+        var (copyId, _) = await LendableCopyAsync(owner, ownerId);
+
+        var first = (await Json(await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }))).GetProperty("id").GetGuid();
+        var waiting = (await Json(await nomad.PostAsJsonAsync($"/api/copies/{copyId}/reserve", new { }))).GetProperty("id").GetGuid();
+        await StepAsync(alice, first, "cancel");
+        Assert.Equal("Requested", (await Json(await nomad.GetAsync($"/api/loans/{waiting}"))).GetProperty("status").GetString());
+
+        var refused = await StepAsync(owner, waiting, "approve", expect: HttpStatusCode.BadRequest);
+        Assert.Contains("mailing address", refused.GetProperty("error").GetString());
+
+        Assert.Equal(HttpStatusCode.OK, (await nomad.PutAsJsonAsync("/api/account/profile", new { displayName = "Nomad", mailingAddress = "9 Found St" })).StatusCode);
+        Assert.Equal("Approved", (await StepAsync(owner, waiting, "approve")).GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Pass_along_needs_the_next_readers_address()
+    {
+        var (owner, ownerId) = await SignUpAsync("Louis");
+        var (alice, _) = await SignUpAsync("Alice");
+        var (nomad, _) = await SignUpAsync("Nomad", address: null);
+        var (copyId, _) = await LendableCopyAsync(owner, ownerId);
+        await owner.PutAsJsonAsync($"/api/copies/{copyId}", new { allowPassAlong = true });
+        var first = (await Json(await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }))).GetProperty("id").GetGuid();
+        await StepAsync(owner, first, "approve");
+        await StepAsync(owner, first, "mailed");
+        await StepAsync(alice, first, "received");
+        await nomad.PostAsJsonAsync($"/api/copies/{copyId}/reserve", new { });
+
+        var refused = await StepAsync(owner, first, "pass-along", expect: HttpStatusCode.BadRequest);
+        Assert.Contains("mailing address", refused.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task A_changed_security_stamp_signs_out_existing_cookies()
+    {
+        using var factory = new ApiFactory(new() { ["Auth:StampValidationMinutes"] = "0" });
+        using var c = factory.CreateClient(new() { AllowAutoRedirect = false });
+        var email = $"stamp-{Guid.NewGuid():N}@example.com";
+        Assert.Equal(HttpStatusCode.Created, (await c.PostAsJsonAsync("/api/account/register", new { email, password = "correct horse", displayName = "Louis" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await c.GetAsync("/api/account/me")).StatusCode);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<ShelfyAccount>>();
+            await users.UpdateSecurityStampAsync((await users.FindByEmailAsync(email))!);
+        }
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/api/account/me")).StatusCode);
     }
 
     [Fact]
