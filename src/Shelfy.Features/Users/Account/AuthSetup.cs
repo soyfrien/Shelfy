@@ -50,7 +50,7 @@ public static class AuthSetup
             o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             o.ExpireTimeSpan = TimeSpan.FromDays(30);
             o.SlidingExpiration = true;
-            o.LoginPath = "/signin";
+            o.LoginPath = "/signin.html";
             o.Events = new CookieAuthenticationEvents
             {
                 OnRedirectToLogin = ctx => Deny(ctx, StatusCodes.Status401Unauthorized, "Sign in first."),

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8a4b2a">
+<title>{{TITLE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<meta property="og:title" content="{{TITLE}}">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top"><a href="/"><h1>📚 Shelfy</h1></a><span class="tag">An internet library</span></header>
+  <p class="notice" id="loading">Loading…</p>
+  <p class="card error hidden" id="err">No book has this code. Check the letters on the sticker.</p>
+  <section class="card hidden" id="copy">
+    <div class="copyhead">
+      <div class="cover small" id="cover"></div>
+      <div>
+        <h2 id="title" style="margin:0"></h2>
+        <div class="notice" id="author"></div>
+        <div class="code" id="code"></div>
+        <div class="pill" id="status"></div>
+      </div>
+    </div>
+    <p class="notice" id="where"></p>
+    <div id="actions"></div>
+    <p class="formerr hidden" id="actErr" role="alert"></p>
+  </section>
+  <section class="card hidden" id="historyBox">
+    <h2 style="margin-top:0">Its journey</h2>
+    <ol class="history" id="history"></ol>
+  </section>
+  <footer>Every Shelfy copy belongs to its owner and is only lent out.</footer>
+</div>
+<script src="/account.js"></script>
+<script src="/copy.js"></script>
+</body>
+</html>

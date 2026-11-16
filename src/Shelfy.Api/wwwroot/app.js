@@ -66,13 +66,30 @@
   }
   function createShelf() {
     function make(userId) { return api('POST', '/api/shelves', { userId: userId }); }
+    // Signed in (ADR-012): the new shelf belongs to the account, so its books can be lent. Otherwise an anonymous guest as before.
+    return window.ShelfyAccount.me().then(function (me) {
+      if (me) return make(me.id).then(function (s) { ls(KEY_SHELF, s.id); return s.id; });
+      return createGuestShelf(make);
+    });
+  }
+  function createGuestShelf(make) {
     var uid = ls(KEY_USER);
     var p = uid ? make(uid).catch(function (e) { if (e.status === 404) return createUser().then(make); throw e; }) : createUser().then(make);
     return p.then(function (s) { ls(KEY_SHELF, s.id); return s.id; });
   }
   // Reuse the last shelf if it still exists, otherwise make a new one.
   function ensureShelf() {
-    var id = ls(KEY_SHELF);
+    return window.ShelfyAccount.me().then(function (me) {
+      var id = ls(KEY_SHELF);
+      // Signed in: use one of the account's own shelves (a guest shelf from before sign-in can't lend its books).
+      if (me) {
+        var mine = (me.shelves || []).map(function (s) { return s.id; });
+        if (!id || mine.indexOf(id) < 0) { id = mine[0] || null; if (id) ls(KEY_SHELF, id); }
+      }
+      return ensureShelfId(id);
+    });
+  }
+  function ensureShelfId(id) {
     if (!id) return createShelf();
     return api('GET', '/api/shelves/' + id).then(function () { return id; }, function (e) {
       if (e.status === 404) return createShelf();

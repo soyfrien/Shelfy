@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8a4b2a">
+<title>My loans · Shelfy</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top"><a href="/"><h1>📚 Shelfy</h1></a><span class="tag">An internet library</span></header>
+  <p class="notice" id="loading">Loading…</p>
+  <section id="main" class="hidden">
+    <h2>Books I'm borrowing</h2>
+    <ul class="loans" id="borrowing"></ul>
+    <p class="empty small hidden" id="noBorrowing">Nothing yet. Open a friend's shelf and tap a book to borrow it.</p>
+    <h2>Requests for my books</h2>
+    <ul class="loans" id="lending"></ul>
+    <p class="empty small hidden" id="noLending">No requests. On your shelf, tap a book and choose “Lend this book”.</p>
+    <p class="formerr hidden" id="err" role="alert"></p>
+    <details class="card" id="profile">
+      <summary><strong>My profile and mailing address</strong></summary>
+      <form class="form" id="profileForm">
+        <label>Your name <input name="displayName" maxlength="100" required></label>
+        <label>City <input name="city" maxlength="100"></label>
+        <label>Mailing address <small>(private: only the other person of an approved loan sees it)</small>
+          <textarea name="mailingAddress" rows="3" maxlength="500"></textarea></label>
+        <button class="btn secondary" type="submit">Save</button>
+        <p class="notice hidden" id="saved">Saved.</p>
+      </form>
+    </details>
+  </section>
+  <footer>Every Shelfy copy belongs to its owner and is only lent out.</footer>
+</div>
+<script src="/account.js"></script>
+<script src="/loans.js"></script>
+</body>
+</html>
