@@ -4,6 +4,7 @@ using Shelfy.Features.Common;
 using Shelfy.Features.Recognition.Parsing;
 using Shelfy.Features.Recognition.Resolution;
 using Shelfy.Infrastructure;
+using Shelfy.Domain;
 
 namespace Shelfy.Features.Recognition.FixSpine;
 

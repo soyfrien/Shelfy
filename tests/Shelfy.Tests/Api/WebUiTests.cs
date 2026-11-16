@@ -96,7 +96,7 @@ public class WebUiTests : IDisposable
     [Fact]
     public async Task Every_Page_Gets_The_Floating_Card_Script()
     {
-        foreach (var page in new[] { "/", "/loans.html", "/signin.html", "/copy.html", "/shelf.html" })
+        foreach (var page in new[] { "/", "/loans.html", "/signin.html", "/copy.html", "/shelf.html", "/search.html" })
         {
             Assert.Contains("/floatcard.js", await _client.GetStringAsync(page));
         }

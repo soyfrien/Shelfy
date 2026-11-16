@@ -1,4 +1,4 @@
-using Shelfy.Features.Recognition.Parsing;
+using Shelfy.Domain;
 
 namespace Shelfy.Tests.Recognition;
 
@@ -44,5 +44,43 @@ public class IsbnTests
     {
         Assert.Equal("9786555110913", Isbn.PickPreferred(new[] { "nope", "9786555110913" }));
         Assert.Null(Isbn.PickPreferred(new[] { "nope", null }));
+    }
+
+    [Theory]
+    [InlineData("9780547928227", "054792822X")]
+    [InlineData("978-0-547-92822-7", "054792822X")]
+    [InlineData("054792822X", "054792822X")]
+    [InlineData("0-441-17271-7", "0441172717")]
+    [InlineData("9780441172719", "0441172717")]
+    public void Converts_Isbn13_And_Isbn10_Back_To_Isbn10(string input, string expected) =>
+        Assert.Equal(expected, Isbn.ToIsbn10(input));
+
+    [Fact]
+    public void ToIsbn10_Is_Null_For_979_And_Invalid_Values()
+    {
+        Assert.Null(Isbn.ToIsbn10("9786555110913".Replace("978", "979"))); // may also be invalid check
+        Assert.Null(Isbn.ToIsbn10("9791234567896"));
+        Assert.Null(Isbn.ToIsbn10("not-an-isbn"));
+        Assert.Null(Isbn.ToIsbn10(null));
+    }
+
+    [Fact]
+    public void Round_Trips_Isbn10_And_Isbn13()
+    {
+        foreach (var raw in new[] { "054792822X", "0-441-17271-7", "9780547928227" })
+        {
+            var isbn13 = Isbn.Normalize(raw);
+            var isbn10 = Isbn.ToIsbn10(raw);
+            Assert.Equal(isbn13, Isbn.Normalize(isbn10));
+            Assert.Equal(isbn10, Isbn.ToIsbn10(isbn13));
+        }
+    }
+
+    [Fact]
+    public void Digits_Strips_Hyphens_And_Spaces()
+    {
+        Assert.Equal("9780547928227", Isbn.Digits("978-0-547-92822-7"));
+        Assert.Equal("054792822X", Isbn.Digits(" 0-547-92822-x "));
+        Assert.Equal("", Isbn.Digits(" "));
     }
 }

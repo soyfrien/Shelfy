@@ -209,3 +209,30 @@ header.top h1 { white-space: nowrap; }
   30% { box-shadow: 0 14px 26px rgba(43, 33, 24, .16); }
   65% { box-shadow: 0 9px 20px rgba(43, 33, 24, .19); }
 }
+
+/* Cross-shelf search (home form and /search.html). 16px text so iOS Safari does not zoom on focus. */
+.sitesearch { display: flex; gap: 8px; margin: 8px 0 16px; align-items: stretch; }
+.sitesearch input {
+  flex: 1; min-width: 0; height: 48px; padding: 0 14px; font: inherit; font-size: 16px; color: var(--ink);
+  background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); -webkit-appearance: none; appearance: none;
+}
+.sitesearch input:focus { outline: none; border-color: var(--accent); }
+.sitesearch .btn { width: auto; padding: 0 18px; height: 48px; flex: none; }
+.hits { list-style: none; margin: 0; padding: 0; }
+.hit { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin: 0 0 12px; }
+.hithead { display: flex; gap: 12px; align-items: flex-start; }
+.hit .cover { flex: none; width: 56px; height: 84px; border-radius: 4px; background: #efe6d8; display: flex; align-items: center; justify-content: center; color: #6b4f3a; font-weight: 700; overflow: hidden; position: relative; }
+.hit .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hitmeta { flex: 1; min-width: 0; }
+.hit-title { font-weight: 700; line-height: 1.25; margin: 0; font-size: 1.05rem; }
+.hit-author, .hit-isbn { color: var(--muted); font-size: .9rem; margin-top: 2px; }
+.hit-avail { margin-top: 6px; }
+.holds { list-style: none; margin: 10px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.hold { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; padding: 8px 0 0; font-size: .95rem; }
+.hold a { color: var(--accent); }
+.hold .copies { display: flex; flex-wrap: wrap; gap: 8px; }
+.hold .copies a { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88rem; letter-spacing: .04em; }
+.search-empty { text-align: center; padding: 28px 8px; color: var(--muted); }
+.search-empty strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 6px; word-break: break-word; }
+.search-more { margin: 8px 0 16px; }
+.search-err { margin-top: 12px; }

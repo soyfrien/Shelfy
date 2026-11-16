@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Shelfy.Features.Recognition.Parsing;
+namespace Shelfy.Domain;
 
 /// <summary>ISBN helpers. Everything is normalized to ISBN-13 digits so a Book is unique per ISBN (BookConfiguration).</summary>
 public static partial class Isbn
@@ -16,7 +16,7 @@ public static partial class Isbn
             return null;
         }
 
-        var digits = new string(value.Where(c => char.IsAsciiDigit(c) || c is 'X' or 'x').ToArray()).ToUpperInvariant();
+        var digits = Digits(value);
         return digits.Length switch
         {
             13 when digits.All(char.IsAsciiDigit) && IsValid13(digits) => digits,
@@ -49,6 +49,39 @@ public static partial class Isbn
         }
 
         return fallback;
+    }
+
+    /// <summary>Digits and a trailing X from an ISBN-like string, hyphens and spaces dropped. Empty when none.</summary>
+    public static string Digits(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+
+        return new string(value.Where(c => char.IsAsciiDigit(c) || c is 'X' or 'x').ToArray()).ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// The ISBN-10 for a 978-prefixed ISBN-13 (or a valid ISBN-10). Null for 979-prefixed ISBN-13s and invalid input.
+    /// </summary>
+    public static string? ToIsbn10(string? value)
+    {
+        var isbn13 = Normalize(value);
+        if (isbn13 is null || !isbn13.StartsWith("978", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var body = isbn13[3..12];
+        var sum = 0;
+        for (var i = 0; i < 9; i++)
+        {
+            sum += (body[i] - '0') * (10 - i);
+        }
+
+        var check = (11 - sum % 11) % 11;
+        return body + (check == 10 ? "X" : check.ToString());
     }
 
     /// <summary>Finds the first valid ISBN in free text (for example "ISBN 978-0-547-92822-7") and returns it as ISBN-13.</summary>

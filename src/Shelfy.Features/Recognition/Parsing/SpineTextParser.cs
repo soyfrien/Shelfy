@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Shelfy.Features.Recognition.Ocr;
+using Shelfy.Domain;
 
 namespace Shelfy.Features.Recognition.Parsing;
 

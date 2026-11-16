@@ -22,6 +22,7 @@ public class CopyConfiguration : IEntityTypeConfiguration<Copy>
         builder.Property(c => c.Condition).HasMaxLength(100);
         builder.Property(c => c.Notes).HasMaxLength(1000);
         builder.Property(c => c.Version).IsConcurrencyToken();
+        builder.HasIndex(c => c.BookId);
         builder.HasIndex(c => c.OwnerId);
         builder.HasIndex(c => c.CurrentShelfId);
         builder.HasIndex(c => c.HomeShelfId);

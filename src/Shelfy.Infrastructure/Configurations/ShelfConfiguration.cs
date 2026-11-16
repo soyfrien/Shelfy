@@ -12,5 +12,6 @@ public class ShelfConfiguration : IEntityTypeConfiguration<Shelf>
         builder.HasKey(s => s.Id);
         builder.HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(s => s.Books).WithOne().HasForeignKey(sb => sb.ShelfId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(s => new { s.IsPublic, s.IsHidden });
     }
 }

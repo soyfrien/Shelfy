@@ -30,4 +30,31 @@ public class ShelfyDbContext(DbContextOptions<ShelfyDbContext> options)
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ShelfyDbContext).Assembly);
     }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        NormalizeBookIsbns();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        NormalizeBookIsbns();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>Keeps <see cref="Book.Isbn13"/> in sync so exact ISBN lookups can use the btree index.</summary>
+    private void NormalizeBookIsbns()
+    {
+        foreach (var entry in ChangeTracker.Entries<Book>())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified))
+            {
+                continue;
+            }
+
+            var book = entry.Entity;
+            book.Isbn13 = Isbn.Normalize(book.Isbn) ?? Isbn.Normalize(book.Isbn13);
+        }
+    }
 }

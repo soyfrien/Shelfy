@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Shelfy.Features.Recognition.Parsing;
+using Shelfy.Domain;
 
 namespace Shelfy.Features.Recognition.Resolution;
 

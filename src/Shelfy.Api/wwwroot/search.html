@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8a4b2a">
+<title>Search shelves · Shelfy</title>
+<meta name="description" content="Search public shelves for a title, author or ISBN.">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><a href="/"><h1>📚 Shelfy</h1></a><span class="tag">Search shelves</span></header>
+  <p class="lede">Find a book on public shelves by title, author or ISBN.</p>
+  <form class="sitesearch" id="form" action="/search.html" method="get" role="search">
+    <input id="q" name="q" type="search" placeholder="Search title, author or ISBN" aria-label="Search title, author or ISBN" enterkeyhint="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button class="btn" type="submit">Search</button>
+  </form>
+  <p class="notice hidden" id="status" role="status"></p>
+  <p class="card error hidden search-err" id="err" role="alert"></p>
+  <div class="search-empty hidden" id="empty"><strong id="emptyTitle">No public shelves have that book</strong><span id="emptyText"></span></div>
+  <ul class="hits" id="hits"></ul>
+  <div class="search-more hidden" id="moreWrap"><button class="btn secondary" id="more" type="button">More results</button></div>
+  <p style="margin-top:24px"><a class="btn secondary" href="/">Make your own shelf from a photo</a></p>
+  <footer>Only public shelves appear here. A private shelf stays with the people who have its link.</footer>
+</div>
+<script src="/account.js"></script>
+<script src="/find.js"></script>
+<script src="/floatcard.js" defer></script>
+</body>
+</html>

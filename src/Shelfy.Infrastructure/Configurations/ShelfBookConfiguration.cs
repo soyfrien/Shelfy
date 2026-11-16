@@ -13,5 +13,6 @@ public class ShelfBookConfiguration : IEntityTypeConfiguration<ShelfBook>
         builder.HasOne(sb => sb.Book).WithMany().HasForeignKey(sb => sb.BookId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(sb => sb.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(sb => sb.SalePrice).HasPrecision(10, 2);
+        builder.HasIndex(sb => sb.BookId);
     }
 }
