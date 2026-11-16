@@ -22,7 +22,9 @@
       state.copies.filter(function (c) { return c.isVisiting; }).forEach(function (c) {
         books.push({ bookId: 'copy:' + c.id, title: c.title, author: c.author, coverUrl: c.coverUrl, visiting: c, lendLabel: 'Borrowed from ' + c.ownerName });
       });
+      renderPublicToggle();
       if (!books.length) { $('empty').classList.remove('hidden'); return; }
+      $('empty').classList.add('hidden');
       if (!search) search = window.Shelfy.createSearch({ ul: $('books'), onBookTap: openSheet });
       search.setBooks(books);
     });
@@ -33,6 +35,43 @@
     return A.statusText(cs[0].status);
   }
   function isOwner() { return state.me && state.shelf && state.me.id === state.shelf.userId; }
+
+  // Account owners can show this shelf in cross-shelf search. Guest shelves have no signed-in owner, so the switch stays hidden.
+  function renderPublicToggle() {
+    var box = $('publicBox');
+    if (!box) return;
+    box.textContent = '';
+    if (!isOwner()) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    var label = A.el('label', 'share-public-label');
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'showInSearch';
+    cb.checked = !!state.shelf.isPublic;
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' Show my shelf in search'));
+    box.appendChild(label);
+    box.appendChild(A.el('p', 'notice', 'Anyone can find these books by title, author or ISBN.'));
+    var err = A.el('p', 'formerr hidden');
+    err.setAttribute('role', 'alert');
+    box.appendChild(err);
+    cb.addEventListener('change', function () {
+      var on = cb.checked;
+      cb.disabled = true;
+      err.classList.add('hidden');
+      A.api('PATCH', '/api/shelves/' + shelfId, { isPublic: on }).then(function (data) {
+        state.shelf.isPublic = !!(data && data.isPublic);
+        cb.checked = state.shelf.isPublic;
+        cb.disabled = false;
+      }, function (e) {
+        cb.checked = !on;
+        err.textContent = e.message;
+        err.classList.remove('hidden');
+        cb.disabled = false;
+      });
+    });
+  }
+
 
   // ---- the bottom sheet ----
   var modal = el('div', 'modal hidden'); modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true');

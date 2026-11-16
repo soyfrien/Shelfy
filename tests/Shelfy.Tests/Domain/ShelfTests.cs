@@ -11,6 +11,16 @@ public class ShelfTests
     }
 
     [Fact]
+    public void SetPublic_Turns_Sharing_On_And_Off()
+    {
+        var shelf = new Shelf();
+        shelf.SetPublic(true);
+        Assert.True(shelf.IsPublic);
+        shelf.SetPublic(false);
+        Assert.False(shelf.IsPublic);
+    }
+
+    [Fact]
     public void AddBook_Adds_A_Private_ShelfBook()
     {
         var shelf = new Shelf { Id = Guid.NewGuid() };

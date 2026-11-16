@@ -152,7 +152,8 @@ A plain HTML/CSS/JS page (no build step) is served by the API from `src/Shelfy.A
   **Delete everything** (red: books on the shelf, detected spines, jobs and stored photos are erased; the shared Books catalog stays).
   Afterwards the page forgets the shelf and starts fresh with a "Shelf cleared" note ([ADR-010](docs/adr/ADR-010-clearing-a-shelf-hide-or-delete.md)).
 - `/s/{shelfId}` shareable shelf page (title, author, cover grid, link-preview tags; unknown, hidden or deleted shelf gives a 404 page).
-  Public sharing is not switchable yet: `IsPublic` is not enforced because the API is open (see ADR-006).
+  The signed-in owner of an account shelf can turn on **Show my shelf in search** (`PATCH /api/shelves/{id}` with `{ "isPublic": true }`).
+  Guest shelves stay out of search. A private shelf can still be opened by its link.
 
 ## Accounts and lending (ADR-012)
 

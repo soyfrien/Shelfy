@@ -454,6 +454,7 @@ public class LendingEndpointTests : IDisposable
         {
             Assert.Equal(expected, (await client.DeleteAsync($"/api/shelves/{shelfId}")).StatusCode);
             Assert.Equal(expected, (await client.PostAsync($"/api/shelves/{shelfId}/hide", null)).StatusCode);
+            Assert.Equal(expected, (await client.PatchAsJsonAsync($"/api/shelves/{shelfId}", new { isPublic = true })).StatusCode);
             Assert.Equal(expected, (await client.PostAsJsonAsync($"/api/shelves/{shelfId}/spines/{spine}/resolve", new { title = "X" })).StatusCode);
             Assert.Equal(expected, (await client.PostAsJsonAsync($"/api/shelves/{shelfId}/spines/{spine}/dismiss", new { })).StatusCode);
             using var form = new MultipartFormDataContent();

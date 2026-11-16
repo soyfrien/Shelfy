@@ -18,6 +18,11 @@ public class Shelf
     /// <summary>When the shelf was hidden (UTC); null while visible.</summary>
     public DateTime? HiddenAt { get; set; }
 
+    /// <summary>
+    /// Shows or hides the shelf in cross-shelf search. A private shelf can still be opened by its link.
+    /// </summary>
+    public void SetPublic(bool isPublic) => IsPublic = isPublic;
+
     /// <summary>Hides the shelf. Calling it again keeps the original hidden time.</summary>
     public void Hide(DateTime nowUtc)
     {

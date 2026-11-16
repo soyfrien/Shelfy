@@ -236,3 +236,10 @@ header.top h1 { white-space: nowrap; }
 .search-empty strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 6px; word-break: break-word; }
 .search-more { margin: 8px 0 16px; }
 .search-err { margin-top: 12px; }
+
+/* Owner-only switch on /s/{id}: include this shelf in cross-shelf search. */
+.share-public { margin: 0 0 16px; }
+.share-public-label { display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; }
+.share-public-label input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--accent); }
+.share-public .notice { margin: 6px 0 0; }
+.share-public .formerr { margin: 6px 0 0; }

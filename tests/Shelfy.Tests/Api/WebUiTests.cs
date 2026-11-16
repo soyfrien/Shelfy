@@ -38,6 +38,11 @@ public class WebUiTests : IDisposable
         var shelfJs = await _client.GetStringAsync("/shelf.js");
         Assert.Contains("isn’t lending this book (yet).", shelfJs);
         Assert.DoesNotContain("The owner isn’t lending this book (yet).", shelfJs);
+        Assert.Contains("Show my shelf in search", shelfJs);
+        Assert.Contains("Anyone can find these books by title, author or ISBN.", shelfJs);
+        Assert.Contains("PATCH", shelfJs);
+        var shelfHtml = await _client.GetStringAsync("/shelf.html");
+        Assert.Contains("id=\"publicBox\"", shelfHtml);
         var signin = await _client.GetStringAsync("/signin.html");
         Assert.Contains("Your library card is forged!", signin);
         Assert.DoesNotContain("other person of a loan", signin);
