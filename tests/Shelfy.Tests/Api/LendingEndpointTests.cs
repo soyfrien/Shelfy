@@ -531,7 +531,7 @@ public class LendingEndpointTests : IDisposable
     public async Task Web_pages_for_accounts_are_served()
     {
         var anon = NewClient();
-        foreach (var path in new[] { "/signin.html", "/loans.html", "/account.js", "/copy.js", "/loans.js", "/signin.js" })
+        foreach (var path in new[] { "/signin.html", "/loans.html", "/account.js", "/card.js", "/copy.js", "/loans.js", "/signin.js" })
         {
             Assert.Equal(HttpStatusCode.OK, (await anon.GetAsync(path)).StatusCode);
         }

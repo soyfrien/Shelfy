@@ -33,12 +33,20 @@
   <section class="forged hidden" id="forged" aria-live="polite">
     <h2>Your library card is forged!</h2>
     <p class="notice">It's one of a kind: the colors and shelves are made just for you. Check your inbox to confirm your email, then you can borrow and lend books.</p>
-    <figure class="libcard"><img id="forgedCard" alt="Your Shelfy Library Card"></figure>
+    <figure class="libcard">
+      <img id="forgedCard" alt="Your Shelfy Library Card">
+      <figcaption class="cardlinks">
+        <a id="cardDownloadSvg" href="/api/account/card.svg" download="shelfy-library-card.svg">Download SVG</a>
+        <button type="button" class="link" id="cardDownloadPng">Download PNG</button>
+      </figcaption>
+      <p class="formerr hidden" id="cardDlErr" role="alert"></p>
+    </figure>
     <a class="btn" id="forgedNext" href="/">Continue</a>
   </section>
   <footer>Shelfy is an early test.</footer>
 </div>
 <script src="/signin.js"></script>
+<script src="/card.js"></script>
 <script src="/floatcard.js" defer></script>
 </body>
 </html>
