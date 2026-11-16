@@ -456,7 +456,7 @@
       var msg = e && e.message;
       if (msg === 'unsupported') return fail('I can\'t open that photo', 'Please choose a JPEG or PNG photo, or take a new one with the camera.');
       if (e.status === 429) return fail('Too many requests', 'Please wait a few seconds and try again.');
-      if (e.status === 0) return fail('No connection', 'Check your internet connection and try again.');
+      if (e.status === 0) return fail('No connection', 'Check your Internet connection and try again.');
       return fail('Something went wrong', 'Please try again in a moment.' + (msg ? ' (' + msg + ')' : ''));
     });
   }
