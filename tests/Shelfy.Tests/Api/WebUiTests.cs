@@ -65,6 +65,29 @@ public class WebUiTests : IDisposable
     }
 
     [Fact]
+    public async Task Library_Card_Pages_Offer_Svg_And_Png_Downloads()
+    {
+        foreach (var page in new[] { "/loans.html", "/signin.html" })
+        {
+            var html = await _client.GetStringAsync(page);
+            Assert.Contains("/card.js", html);
+            Assert.Contains("Download SVG", html);
+            Assert.Contains("Download PNG", html);
+            Assert.Contains("id=\"cardDownloadSvg\"", html);
+            Assert.Contains("id=\"cardDownloadPng\"", html);
+        }
+
+        var js = await _client.GetStringAsync("/card.js");
+        Assert.Contains("SCALE = 2", js);
+        Assert.Contains("1712", js);
+        Assert.Contains("toBlob", js);
+        Assert.Contains("createObjectURL", js);
+        Assert.Contains("shelfy-library-card-", js);
+        Assert.Contains("image/svg+xml;charset=utf-8", js);
+        Assert.Contains("Liberation Sans", js);
+    }
+
+    [Fact]
     public async Task Every_Page_Gets_The_Floating_Card_Script()
     {
         foreach (var page in new[] { "/", "/loans.html", "/signin.html", "/copy.html", "/shelf.html" })
