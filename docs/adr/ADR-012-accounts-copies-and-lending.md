@@ -5,7 +5,7 @@
 
 ## Context
 
-Shelfy becomes an internet library: people sign in, open a friend's shelf, tap a book and ask to borrow or reserve it; the book is
+Shelfy becomes an Internet library: people sign in, open a friend's shelf, tap a book and ask to borrow or reserve it; the book is
 mailed (snail mail) to them, goes on their shelf, and later travels back. A book is always its owner's property, only lent out.
 Two things the model had no room for:
 

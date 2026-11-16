@@ -212,7 +212,7 @@ public class AccountHandler(
         var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
         var link = $"{baseUrl.TrimEnd('/')}/api/account/confirm-email?userId={account.Id}&code={code}";
         var body = $"Hi {name},\n\nWelcome to Shelfy! Please confirm your email so you can borrow and lend books:\n\n{link}\n\n"
-                   + "If you didn't create a Shelfy account, you can ignore this email.\n\nShelfy, an internet library";
+                   + "If you didn't create a Shelfy account, you can ignore this email.\n\nShelfy, an Internet library";
         try
         {
             await mailer.SendAsync(new MailMessage(account.Email!, "Confirm your email for Shelfy", body), ct);
