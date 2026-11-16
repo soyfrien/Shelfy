@@ -30,7 +30,14 @@
     l.actions.forEach(function (act) {
       var b = el('button', 'btn' + (SECONDARY[act] ? ' secondary' : ''), LABEL[act] || act); b.type = 'button';
       b.onclick = function () {
-        var body = act === 'received' && me.shelves.length ? { shelfId: me.shelves[0].id } : undefined;
+        var body;
+        if (act === 'received') {
+          // The sticker code proves the book is in your hands (the server checks it).
+          var typed = window.prompt('Type the code on the book’s sticker (like 7K3M-Q9XA) to confirm it arrived:');
+          if (typed === null || !typed.trim()) return;
+          body = { code: typed.trim() };
+          if (me.shelves.length) body.shelfId = me.shelves[0].id;
+        }
         b.disabled = true;
         A.api('POST', '/api/loans/' + l.id + '/' + act, body).then(load, function (e) { $('err').textContent = e.message; $('err').classList.remove('hidden'); b.disabled = false; });
       };
@@ -46,6 +53,7 @@
       var f = $('profileForm');
       f.displayName.value = me.displayName; f.city.value = me.city || ''; f.mailingAddress.value = me.mailingAddress || '';
       if (!me.mailingAddress) $('profile').open = true;
+      if (!$('libCard').src) $('libCard').src = '/api/account/card.svg';
       return A.api('GET', '/api/loans').then(function (r) {
         $('loading').classList.add('hidden'); $('main').classList.remove('hidden'); $('err').classList.add('hidden');
         [['borrowing', 'noBorrowing'], ['lending', 'noLending']].forEach(function (p) {
@@ -61,7 +69,7 @@
     e.preventDefault();
     var f = e.target;
     A.api('PUT', '/api/account/profile', { displayName: f.displayName.value, city: f.city.value, mailingAddress: f.mailingAddress.value })
-      .then(function () { $('saved').classList.remove('hidden'); }, function (x) { $('err').textContent = x.message; $('err').classList.remove('hidden'); });
+      .then(function () { $('saved').classList.remove('hidden'); $('libCard').src = '/api/account/card.svg?v=' + Date.now(); }, function (x) { $('err').textContent = x.message; $('err').classList.remove('hidden'); });
   });
   load();
 })();

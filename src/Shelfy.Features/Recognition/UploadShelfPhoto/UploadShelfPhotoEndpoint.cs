@@ -27,6 +27,16 @@ public static class UploadShelfPhotoEndpoint
                     {
                         file = (await request.ReadFormAsync(ct)).Files.GetFile("file");
                     }
+                    catch (InvalidDataException ex) when (ex.Message.Contains("length limit", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // FormOptions.MultipartBodyLengthLimit: same friendly JSON as the handler's own size check.
+                        return TooLarge();
+                    }
+                    catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+                    {
+                        // Kestrel's request size limit (RequestSizeLimit below).
+                        return TooLarge();
+                    }
                     catch (InvalidDataException)
                     {
                         return Results.BadRequest(new { error = "The multipart form could not be read." });
@@ -75,4 +85,7 @@ public static class UploadShelfPhotoEndpoint
 
         return app;
     }
+
+    private static IResult TooLarge() =>
+        Results.Json(new { error = UploadShelfPhotoHandler.TooLargeMessage }, statusCode: StatusCodes.Status413PayloadTooLarge);
 }

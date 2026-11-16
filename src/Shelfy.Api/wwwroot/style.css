@@ -141,6 +141,13 @@ body.sheet-open { overflow: hidden; }
 header.top .acct { margin-left: auto; display: flex; gap: 12px; align-items: baseline; font-size: .92rem; }
 header.top .acct a { color: var(--accent); text-decoration: underline; }
 header.top .acct .link { padding: 0; font-size: .92rem; }
+header.top .acct a.forge { background: var(--accent); color: var(--accent-ink); text-decoration: none; font-weight: 600; padding: 6px 12px; border-radius: 99px; white-space: nowrap; }
+.lede { margin: -4px 0 8px; font-size: 1.02rem; }
+.libcard { margin: 12px 0; }
+.libcard img { display: block; width: 100%; height: auto; aspect-ratio: 856 / 540; border-radius: 16px; box-shadow: 0 6px 20px rgba(43, 33, 24, .18); background: var(--line); }
+.libcard .cardlinks { display: flex; gap: 16px; margin-top: 8px; font-size: .92rem; }
+.libcard .cardlinks a { color: var(--accent); }
+.forged h2 { margin-top: 8px; }
 .tabs { display: flex; gap: 8px; margin: 8px 0; }
 .tab { flex: 1; border: 2px solid var(--accent); background: transparent; color: var(--accent); border-radius: var(--radius); padding: 10px; font: inherit; font-weight: 600; cursor: pointer; }
 .tab.on { background: var(--accent); color: var(--accent-ink); }

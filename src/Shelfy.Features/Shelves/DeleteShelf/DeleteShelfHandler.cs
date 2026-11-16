@@ -13,7 +13,7 @@ namespace Shelfy.Features.Shelves.DeleteShelf;
 /// </summary>
 public class DeleteShelfHandler(ShelfyDbContext db, IPhotoStorage storage, ILogger<DeleteShelfHandler> logger)
 {
-    // TODO(ADR-006): only the owner may delete a shelf once authentication exists.
+    // Who may call this is enforced by ShelfOwnerFilter on the endpoint: only the owner for account shelves, the link for guest shelves.
     public async Task<HandlerResult<DeleteShelfResponse>> HandleAsync(Guid shelfId, CancellationToken ct = default)
     {
         var shelf = await db.Shelves.Include(s => s.Books).FirstOrDefaultAsync(s => s.Id == shelfId, ct);

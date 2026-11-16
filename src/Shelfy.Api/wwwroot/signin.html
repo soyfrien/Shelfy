@@ -12,7 +12,7 @@
   <header class="top"><a href="/"><h1>📚 Shelfy</h1></a><span class="tag">An Internet library</span></header>
   <div class="tabs" role="tablist">
     <button type="button" class="tab on" id="tabIn" role="tab">Sign in</button>
-    <button type="button" class="tab" id="tabUp" role="tab">Create account</button>
+    <button type="button" class="tab" id="tabUp" role="tab">Forge Library card</button>
   </div>
   <form class="card form" id="formIn" autocomplete="on">
     <label>Email <input type="email" name="email" autocomplete="username" required></label>
@@ -25,11 +25,17 @@
     <label>Email <input type="email" name="email" autocomplete="username" required></label>
     <label>Password <small>(8 characters or more)</small> <input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
     <label>City <small>(optional, shown)</small> <input name="city" maxlength="100"></label>
-    <label>Mailing address <small>(private: only shown to the other person of a loan once it is approved)</small>
+    <label>Mailing address <small>(private: only shown to the person you lend to or borrow from, once that loan is approved)</small>
       <textarea name="mailingAddress" rows="3" maxlength="500" autocomplete="street-address"></textarea></label>
-    <button class="btn" type="submit">Create account</button>
+    <button class="btn" type="submit">Forge my Library card</button>
     <p class="formerr hidden" role="alert"></p>
   </form>
+  <section class="forged hidden" id="forged" aria-live="polite">
+    <h2>Your library card is forged!</h2>
+    <p class="notice">It's one of a kind: the colors and shelves are made just for you. Check your inbox to confirm your email, then you can borrow and lend books.</p>
+    <figure class="libcard"><img id="forgedCard" alt="Your Shelfy Library Card"></figure>
+    <a class="btn" id="forgedNext" href="/">Continue</a>
+  </section>
   <footer>Shelfy is an early test.</footer>
 </div>
 <script src="/signin.js"></script>

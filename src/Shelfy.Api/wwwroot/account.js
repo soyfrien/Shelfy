@@ -51,7 +51,7 @@
         nav.appendChild(loans); nav.appendChild(out);
         if (!u.emailConfirmed) {
           // Borrowing, reserving and approving need a confirmed email.
-          var bar = el('p', 'notice confirmbar', 'Confirm your email to borrow and lend books. We sent a link to ' + u.email + '. ');
+          var bar = el('p', 'notice confirmbar', 'Confirm your email to borrow, reserve, or approve requests. We sent a link to ' + u.email + '. ');
           var again = el('button', 'link', 'Send it again'); again.type = 'button';
           again.onclick = function () {
             again.disabled = true;
@@ -63,6 +63,8 @@
         }
       } else {
         var a = el('a', null, 'Sign in'); a.href = signInUrl(); nav.appendChild(a);
+        // Sign-up: Shelfy calls a new account a Library card.
+        var forge = el('a', 'forge', 'Forge Library card'); forge.href = signInUrl() + '#register'; nav.appendChild(forge);
       }
     });
   }

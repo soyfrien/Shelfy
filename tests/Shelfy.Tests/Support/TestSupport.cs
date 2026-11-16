@@ -270,6 +270,24 @@ public static class TestImages
     public static byte[] Jpeg(int extraBytes = 16) => Pad(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46 }, extraBytes);
     public static byte[] Png(int extraBytes = 16) => Pad(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D }, extraBytes);
 
+    /// <summary>A PNG signature and IHDR with the given size (enough for the size check; not a decodable image).</summary>
+    public static byte[] PngOfSize(int width, int height, int extraBytes = 64)
+    {
+        var bytes = Pad(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D, (byte)'I', (byte)'H', (byte)'D', (byte)'R',
+            (byte)(width >> 24), (byte)(width >> 16), (byte)(width >> 8), (byte)width,
+            (byte)(height >> 24), (byte)(height >> 16), (byte)(height >> 8), (byte)height, 8, 2, 0, 0, 0 }, extraBytes);
+        return bytes;
+    }
+
+    /// <summary>A JPEG with JFIF and EXIF-like segments before a baseline frame header of the given size.</summary>
+    public static byte[] JpegOfSize(int width, int height, int extraBytes = 64)
+    {
+        var app0 = new byte[] { 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0 };
+        var app1 = new byte[] { 0xFF, 0xE1, 0x00, 0x08, 1, 2, 3, 4, 5, 6 };
+        var sof = new byte[] { 0xFF, 0xC0, 0x00, 0x11, 8, (byte)(height >> 8), (byte)height, (byte)(width >> 8), (byte)width, 3, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1 };
+        return Pad(new byte[] { 0xFF, 0xD8 }.Concat(app0).Concat(app1).Concat(sof).ToArray(), extraBytes);
+    }
+
     private static byte[] Pad(byte[] header, int extra)
     {
         var bytes = new byte[header.Length + extra];

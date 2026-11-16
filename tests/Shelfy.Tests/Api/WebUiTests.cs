@@ -24,6 +24,30 @@ public class WebUiTests : IDisposable
     }
 
     [Fact]
+    public async Task Home_Page_Says_Lending_Exists_And_Offers_Sign_Up_Next_To_Sign_In()
+    {
+        var html = await _client.GetStringAsync("/");
+        Assert.Contains("borrow and lend books with friends", html);
+        var account = await _client.GetStringAsync("/account.js");
+        Assert.Contains("'Forge Library card'", account);
+        Assert.Contains("'#register'", account);
+        Assert.Contains("to borrow, reserve, or approve requests", account);
+        var signin = await _client.GetStringAsync("/signin.html");
+        Assert.Contains("Your library card is forged!", signin);
+        Assert.DoesNotContain("other person of a loan", signin);
+    }
+
+    [Fact]
+    public async Task Home_Page_Waits_Long_Enough_For_Big_Shelves_And_Explains_413()
+    {
+        var js = await _client.GetStringAsync("/app.js");
+        Assert.Contains("big shelves can take a few minutes", js);
+        Assert.Contains("POLL_LIMIT_BASE_MS = 15 * 60 * 1000", js);
+        Assert.Contains("e.status === 413", js);
+        Assert.Contains("too large (max", js);
+    }
+
+    [Fact]
     public async Task Home_Page_Is_Served_As_Html_At_The_Root()
     {
         var response = await _client.GetAsync("/");

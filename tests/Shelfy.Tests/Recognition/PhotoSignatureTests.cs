@@ -32,3 +32,53 @@ public class PhotoSignatureTests
     public void Extension_Must_Agree_When_Present(string? name, PhotoFormat format, bool expected) =>
         Assert.Equal(expected, PhotoSignature.ExtensionMatches(name, format));
 }
+
+public class PhotoDimensionsTests
+{
+    [Fact]
+    public void Reads_The_Size_Of_A_Png()
+    {
+        Assert.Equal((640, 480), PhotoDimensions.Read(TestImages.PngOfSize(640, 480), PhotoFormat.Png));
+    }
+
+    [Fact]
+    public void Reads_The_Size_Of_A_Jpeg_Past_Its_App_Segments()
+    {
+        Assert.Equal((4032, 3024), PhotoDimensions.Read(TestImages.JpegOfSize(4032, 3024), PhotoFormat.Jpeg));
+    }
+
+    [Fact]
+    public void Unknown_When_The_Headers_Do_Not_Say()
+    {
+        Assert.Null(PhotoDimensions.Read(TestImages.Jpeg(500), PhotoFormat.Jpeg));
+        Assert.Null(PhotoDimensions.Read(TestImages.Png(500), PhotoFormat.Png));
+        Assert.Null(PhotoDimensions.Read(new byte[] { 0xFF, 0xD8 }, PhotoFormat.Jpeg));
+    }
+
+    [Fact]
+    public async Task Handler_Rejects_A_Tiny_Jpeg_And_Keeps_Nothing_But_Accepts_A_Normal_One()
+    {
+        var db = TestDb.Create();
+        var storage = new InMemoryPhotoStorage();
+        var user = new Shelfy.Domain.User { Id = Guid.NewGuid(), DisplayName = "Louis" };
+        var shelf = new Shelfy.Domain.Shelf { Id = Guid.NewGuid(), UserId = user.Id };
+        db.Users.Add(user);
+        db.Shelves.Add(shelf);
+        await db.SaveChangesAsync();
+        var clock = new TestClock();
+        var handler = new UploadShelfPhotoHandler(db, storage,
+            new Shelfy.Features.Recognition.Worker.DbJobQueue(null!, Microsoft.Extensions.Options.Options.Create(new Shelfy.Features.Recognition.RecognitionOptions()), clock),
+            Microsoft.Extensions.Options.Options.Create(new Shelfy.Features.Recognition.RecognitionOptions()), clock);
+
+        var tiny = TestImages.JpegOfSize(30, 30);
+        var refused = await handler.HandleAsync(new UploadShelfPhotoRequest(shelf.Id, "t.jpg", tiny.Length, new MemoryStream(tiny)));
+        Assert.Equal(Shelfy.Features.Common.HandlerStatus.Invalid, refused.Status);
+        Assert.Contains("too small (30 x 30", refused.Error);
+        Assert.Empty(storage.Files);
+        Assert.Empty(db.RecognitionJobs);
+
+        var fine = TestImages.JpegOfSize(1200, 900);
+        Assert.True((await handler.HandleAsync(new UploadShelfPhotoRequest(shelf.Id, "f.jpg", fine.Length, new MemoryStream(fine)))).IsSuccess);
+    }
+}
+

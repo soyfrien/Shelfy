@@ -7,7 +7,10 @@
   var NEW_SHELF = 'new';   // KEY_SHELF value after "Start a new, empty shelf": the next photo makes a new shelf
   var MAX_UPLOAD = 20 * 1024 * 1024;
   var POLL_FAST_MS = 1500, POLL_SLOW_MS = 2500, POLL_ERR_MAX_MS = 8000;
-  var POLL_LIMIT_BASE_MS = 3 * 60 * 1000, POLL_LIMIT_PER_PART_MS = 90 * 1000;   // overall patience: 3 min + 90 s per part
+  // Overall patience: 15 min + 2 min per part. A busy shelf photo can take 4+ minutes, more when others are in line first.
+  var POLL_LIMIT_BASE_MS = 15 * 60 * 1000, POLL_LIMIT_PER_PART_MS = 2 * 60 * 1000;
+  var SLOW_AFTER_MS = 60 * 1000;   // after this, say that big shelves take a while so nobody thinks it froze
+  var SLOW_NOTE = 'Still working: big shelves can take a few minutes. You can leave this page open.';
 
   var $ = function (id) { return document.getElementById(id); };
   var els = {
@@ -170,7 +173,7 @@
         var err = new Error((data && data.error) || ('HTTP ' + xhr.status)); err.status = xhr.status; reject(err);
       };
       xhr.onerror = function () { var e = new Error('network'); e.status = 0; reject(e); };
-      xhr.ontimeout = xhr.onerror; xhr.timeout = 3 * 60 * 1000;
+      xhr.ontimeout = xhr.onerror; xhr.timeout = 10 * 60 * 1000;   // slow mobile uploads of a 20 MB photo
       xhr.send(form);
     });
   }
@@ -214,7 +217,7 @@
     var text;
     if (n === 1) {
       if (uploading === 0) text = 'Uploading photo… ' + Math.round(r.parts[0].uploadPct || 0) + '%';
-      else if (reading === 0) text = 'Reading the spines and looking up the books… this can take up to a minute.';
+      else if (reading === 0) text = 'Reading the spines and looking up the books… this usually takes a minute or two.';
       else if (retry === 0) text = 'Hit a snag, trying again…';
       else text = 'Waiting in line…';
     } else if (reading >= 0) text = 'Reading part ' + (reading + 1) + ' of ' + n + '…';
@@ -225,6 +228,7 @@
     var active = states.some(function (s) { return s !== 'done' && s !== 'error'; });
     var pct = (done + (reading >= 0 ? 0.5 : 0) + (uploading >= 0 ? 0.1 : 0)) / n * 100;
     if (!active) text = done === n ? 'All ' + (n === 1 ? 'done' : n + ' parts read') : done + ' of ' + n + ' parts read';
+    else if (r.slow && uploading < 0) text += ' ' + SLOW_NOTE;
     var bar = n === 1 ? (uploading === 0 ? r.parts[0].uploadPct || 0 : (active ? null : 100)) : pct;
     setStatus(text, bar, active);
 
@@ -243,7 +247,7 @@
       var row = document.createElement('div'); row.className = 'parterr';
       var msg = document.createElement('span');
       msg.textContent = (n > 1 ? 'Part ' + (i + 1) + ' of ' + n : 'The photo') + ' couldn\'t be read' +
-        (part.uploadError ? ' (upload failed).' : (job && job.error ? ': ' + job.error : '.'));
+        (part.uploadError ? uploadErrorText(part.uploadError) : (job && job.error ? ': ' + job.error : '.'));
       row.appendChild(msg);
       if (!r.polling && !(part.uploadError && part.uploadError.fatal)) {
         var btn = document.createElement('button');
@@ -254,6 +258,13 @@
       els.partErrors.appendChild(row);
     });
     show(els.partErrors, els.partErrors.childNodes.length > 0);
+  }
+
+  // 413 can come from nginx (HTML page) or the app (JSON): always say the same clear thing, whatever the body.
+  function uploadErrorText(e) {
+    if (e.status === 413) return ': the photo is too large (max ' + Math.round(MAX_UPLOAD / 1024 / 1024) + ' MB). Try a smaller photo.';
+    if (e.fatal && e.message && !/^HTTP \d+$/.test(e.message)) return ': ' + e.message;
+    return ' (upload failed).';
   }
 
   function retryPart(r, part) {
@@ -270,6 +281,7 @@
     if (r.polling) return;
     r.polling = true;
     var started = Date.now(), delay = POLL_FAST_MS, errors = 0, lastDone = -1, lastBooks = -1, lastShown = null;
+    r.slow = false;
     var limit = POLL_LIMIT_BASE_MS + POLL_LIMIT_PER_PART_MS * r.n;
     function finish(timedOut) {
       r.polling = false;
@@ -278,7 +290,7 @@
       if (timedOut) {
         els.partErrors.textContent = '';
         var d = document.createElement('div'); d.className = 'parterr';
-        d.textContent = 'This is taking longer than expected. Your shelf link keeps working: reload this page in a minute to see the books.';
+        d.textContent = 'This is taking much longer than usual. Your photo is still in line, and your shelf link keeps working: reload this page in a few minutes to see the books.';
         els.partErrors.appendChild(d); show(els.partErrors, true); setStatus('Still working…', null, false);
       }
       var failedParts = r.parts.some(function (p) { return partState(r, p) === 'error'; });
@@ -296,6 +308,7 @@
     function tick() {
       if (r !== run || r.aborted) { r.polling = false; return; }
       var uploadsPending = r.parts.some(function (p) { return !p.uploaded && !p.uploadError; });
+      if (!r.slow && Date.now() - started > SLOW_AFTER_MS) { r.slow = true; renderProgress(); }
       // Nothing is on the server before the first upload has finished: don't ask yet (it would be a 404).
       if (uploadsPending && !r.parts.some(function (p) { return p.uploaded; })) { setTimeout(tick, 500); return; }
       api('GET', '/api/shelves/' + r.shelfId + '/batches/' + r.batchId).then(function (batch) {
