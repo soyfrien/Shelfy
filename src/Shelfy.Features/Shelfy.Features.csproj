@@ -15,4 +15,8 @@
     <ProjectReference Include="..\Shelfy.Infrastructure\Shelfy.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Azure.Communication.Email" Version="1.1.0" />
+  </ItemGroup>
+
 </Project>

@@ -19,13 +19,17 @@ public static class UsersModule
         services.AddScoped<AccountHandler>();
         services.AddMemoryCache();
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
-        if (string.Equals(configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase))
+        switch (configuration["Email:Provider"]?.Trim().ToLowerInvariant())
         {
-            services.AddSingleton<IMailer, SmtpMailer>();
-        }
-        else
-        {
-            services.AddSingleton<IMailer, LogMailer>();
+            case "acs":
+                services.AddSingleton<IMailer, AcsMailer>();
+                break;
+            case "smtp":
+                services.AddSingleton<IMailer, SmtpMailer>();
+                break;
+            default:
+                services.AddSingleton<IMailer, LogMailer>();
+                break;
         }
 
         return services;

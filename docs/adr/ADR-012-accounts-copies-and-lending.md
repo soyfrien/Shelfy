@@ -50,8 +50,8 @@ Two things the model had no room for:
   token, works without being signed in, then redirects to `/signin.html?confirmed=1|0`). Borrowing, reserving and approving a loan answer 400
   until the email is confirmed; approving is included because it reveals the borrower's address. Listing a copy does not need it.
   `POST /api/account/confirm-email/resend` (signed in, once a minute). `GET /me` has `emailConfirmed`; pages show a bar with "Send it again".
-  Mail goes through `IMailer`: `Email:Provider=Smtp` (`Email:SmtpHost/SmtpPort/SmtpUser/SmtpPassword/From`, STARTTLS) or `Log` (default, writes
-  the email to the log; development only). If sending fails, registration still succeeds and the person can resend.
+  Mail goes through `IMailer`: `Email:Provider=Acs` (Azure Communication Services Email, the production choice: Exchange Online is retiring
+  password SMTP sign-in), `Smtp` (any relay with a login, STARTTLS) or `Log` (default, writes the email to the log; development only). If sending fails, registration still succeeds and the person can resend.
 - Endpoints: `POST /api/account/register`, `/login`, `/logout`, `GET /api/account/me` (the only response with your own address, plus your shelves),
   `PUT /api/account/profile`.
 - Data-protection keys (they sign the cookie) persist to `DataProtection:KeysPath` when set, so sign-ins survive restarts.

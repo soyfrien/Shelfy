@@ -185,13 +185,14 @@ and a shelf, then the new `db/schema.idempotent.sql` on top (data kept), then th
    which is already right behind nginx with `X-Forwarded-Proto`).
 
 6. **Email sender (required for lending).** Borrowing, reserving and approving need a confirmed email, so production needs a real sender, or nobody
-   can borrow. In `/etc/shelfy/shelfy.env` (root-only, never in git):
-   `Email__Provider=Smtp`, `Email__SmtpHost=smtp.office365.com`, `Email__SmtpPort=587`, `Email__SmtpUser=<sending mailbox>`,
-   `Email__SmtpPassword=<its password>`, `Email__From=<same mailbox>`, `Email__PublicBaseUrl=https://shelfy.ppdac.ltd`.
-   With Microsoft 365 the sending mailbox needs SMTP AUTH turned on (Exchange admin center, mailbox, Manage email apps, Authenticated SMTP).
-   Any other SMTP relay works the same way. Without these settings the confirmation email only goes to the service log (`journalctl -u shelfy`).
+   can borrow. Use Azure Communication Services Email (Exchange Online is retiring password SMTP sign-in): in the `cosmic` subscription create an
+   Email Communication Service with an Azure managed domain (or verify `ppdac.ltd` with the TXT/SPF/DKIM records it lists, added in Squarespace),
+   create a Communication Service and connect the domain to it. Then in `/etc/shelfy/shelfy.env` (root-only, never in git):
+   `Email__Provider=Acs`, `Email__AcsConnectionString=<the Communication Service's connection string>`, `Email__From=DoNotReply@<the connected domain>`,
+   `Email__PublicBaseUrl=https://shelfy.ppdac.ltd`. (`Email__Provider=Smtp` with `Email__SmtpHost/SmtpPort/SmtpUser/SmtpPassword/From` also works with
+   any relay that still allows a login.) Without these settings the confirmation email only goes to the service log (`journalctl -u shelfy`).
 
-The only new secret is the SMTP password (step 6). The cookie is `Secure` because requests arrive as HTTPS through nginx (`UseForwardedHeaders`). Rollback: `/opt/shelfy.old` works with the new
+The only new secret is the email connection string (step 6). The cookie is `Secure` because requests arrive as HTTPS through nginx (`UseForwardedHeaders`). Rollback: `/opt/shelfy.old` works with the new
 tables (it ignores them); copies and loans created meanwhile stay in the database.
 
 Behaviour change to check: shelves created while signed in can only be changed (upload, fix, hide, delete) by their owner; guest shelves are unchanged.
