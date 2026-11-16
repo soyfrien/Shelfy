@@ -38,7 +38,7 @@
     } else if (v.canReserve) {
       box.appendChild(button('Reserve (join the waitlist)', 'secondary', function () { ask('reserve'); }));
     } else if (my) {
-      box.appendChild(el('p', 'notice', 'Your request: ' + A.statusText(my.status) + '.'));
+      box.appendChild(el('p', 'notice', 'Your request: ' + A.statusText(my.status, { statusLabel: my.statusLabel, ownerName: c.ownerName, isOwner: v.isOwner }) + '.'));
     }
     if (v.signedIn) { var ml = el('a', 'link', 'My loans'); ml.href = '/loans.html'; box.appendChild(ml); }
 

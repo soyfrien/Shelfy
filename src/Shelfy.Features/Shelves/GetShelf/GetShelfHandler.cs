@@ -25,6 +25,8 @@ public class GetShelfHandler(ShelfyDbContext db)
             .OrderBy(b => b.Title)
             .ToList();
 
-        return HandlerResult<GetShelfResponse>.Ok(new GetShelfResponse(shelf.Id, shelf.UserId, shelf.IsPublic, books));
+        var owner = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == shelf.UserId, ct);
+        var account = await db.Accounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == shelf.UserId, ct);
+        return HandlerResult<GetShelfResponse>.Ok(new GetShelfResponse(shelf.Id, shelf.UserId, shelf.IsPublic, books, PublicUserName.Of(owner, account)));
     }
 }

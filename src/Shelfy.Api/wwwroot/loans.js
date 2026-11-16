@@ -12,7 +12,7 @@
     var li = el('li', 'card loan');
     var head = el('div', 'loanhead');
     var a = el('a', 'lt', l.title); a.href = '/c/' + l.copyCode.replace('-', ''); head.appendChild(a);
-    head.appendChild(el('span', 'pill', A.statusText(l.status) + (l.waitlistPosition ? ' · #' + l.waitlistPosition : '')));
+    head.appendChild(el('span', 'pill', (l.statusLabel || A.statusText(l.status, l)) + (l.waitlistPosition ? ' · #' + l.waitlistPosition : '')));
     li.appendChild(head);
     var who = l.role === 'borrower' ? 'From ' + l.ownerName + (l.isPassAlong && l.senderName ? ', passed on by ' + l.senderName : '')
       : l.role === 'owner' ? 'Requested by ' + l.borrowerName : 'Pass it on to ' + l.borrowerName;
@@ -21,7 +21,9 @@
     if (l.shipTo) {
       var ship = el('div', 'address');
       var toMail = l.role !== 'borrower' && l.status === 'Approved';
-      ship.appendChild(el('small', null, (l.role === 'borrower' ? 'Owner’s address, for the return' : toMail ? 'Mail it to' : 'Borrower’s address') + ' (private)'));
+      var addrLabel = l.role === 'borrower' ? (l.ownerName || 'Owner') + '’s address, for the return'
+        : toMail ? 'Mail it to' : (l.borrowerName || 'Borrower') + '’s address';
+      ship.appendChild(el('small', null, addrLabel + ' (private)'));
       ship.appendChild(el('div', null, l.shipToName));
       ship.appendChild(el('div', 'pre', l.shipTo));
       li.appendChild(ship);

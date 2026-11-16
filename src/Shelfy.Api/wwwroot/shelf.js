@@ -78,7 +78,7 @@
         sheet.appendChild(el('p', 'notice', 'Lend this book to other readers? It gets a code for a sticker so it can find its way back to you. You approve every request.'));
         sheet.appendChild(btn('Lend this book', '', function () { act(A.api('POST', '/api/shelves/' + shelfId + '/books/' + book.bookId + '/copies', {})); }));
       } else {
-        sheet.appendChild(el('p', 'notice', 'The owner isn’t lending this book (yet).'));
+        sheet.appendChild(el('p', 'notice', (state.shelf.ownerName || 'The owner') + ' isn’t lending this book (yet).'));
       }
     }
     cs.forEach(function (c) { sheet.appendChild(copyRow(c)); });
@@ -107,7 +107,7 @@
     } else if (v.isOwner) {
       var lab = el('a', 'btn secondary', 'Print the QR label'); lab.href = '/api/copies/' + c.id + '/label.svg'; lab.target = '_blank'; row.appendChild(lab);
     } else if (v.myLoan) {
-      row.appendChild(el('p', 'notice', 'Your request: ' + A.statusText(v.myLoan.status) + '. '));
+      row.appendChild(el('p', 'notice', 'Your request: ' + A.statusText(v.myLoan.status, { statusLabel: v.myLoan.statusLabel, ownerName: c.ownerName, isOwner: v.isOwner }) + '. '));
       var ml = el('a', 'link', 'Open My loans'); ml.href = '/loans.html'; row.appendChild(ml);
     } else if (v.canBorrow) {
       row.appendChild(btn('Ask to borrow', '', function () {
