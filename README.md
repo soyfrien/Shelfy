@@ -38,6 +38,9 @@ ASP.NET Core 8 Web API, .NET MAUI, EF Core 8 with PostgreSQL, modular monolith w
   - [ADR-007 Azure AI Vision OCR and book resolution](docs/adr/ADR-007-ocr-and-book-resolution.md)
   - [ADR-008 Database job queue and pluggable providers](docs/adr/ADR-008-database-job-queue-and-pluggable-providers.md)
   - [ADR-009 Tiled uploads and batches](docs/adr/ADR-009-tiled-uploads-and-batches.md)
+  - [ADR-010 Clearing a shelf](docs/adr/ADR-010-clearing-a-shelf-hide-or-delete.md)
+  - [ADR-011 Tap to fix and remembered corrections](docs/adr/ADR-011-tap-to-fix-and-remembered-corrections.md)
+  - [ADR-012 Accounts, physical copies and lending by mail](docs/adr/ADR-012-accounts-copies-and-lending.md)
 - [Recognition pipeline](docs/pipeline.md)
 - [Next: MAUI app](docs/next-maui-app.md)
 - Requirements: [shelf upload](docs/requirements/shelf-upload.md), [recognition](docs/requirements/recognition.md), [public shelf page](docs/requirements/public-shelf-page.md)
@@ -48,10 +51,12 @@ ASP.NET Core 8 Web API, .NET MAUI, EF Core 8 with PostgreSQL, modular monolith w
 src/
   Shelfy.sln
   Shelfy.Api              ASP.NET Core 8 host: Swagger, /health, wires modules together (no business logic)
-  Shelfy.Domain           User, Shelf, Book, ShelfBook, AvailabilityStatus, RecognitionJob, DetectedSpine, UserCorrection (see docs/domain.md)
+  Shelfy.Domain           User, Shelf, Book, ShelfBook, AvailabilityStatus, RecognitionJob, DetectedSpine, UserCorrection,
+                          Copy, CopyCode, CopyMovement, Loan and the Lending state machine (see docs/domain.md, ADR-012)
   Shelfy.Infrastructure   EF Core 8 + Npgsql DbContext, entity configurations, migrations
   Shelfy.Features         Vertical slices, one folder per module
-    Users/                  module placeholder (no slices yet)
+    Users/CreateGuest       POST /api/guests   (anonymous guest for the web UI)
+    Users/Account           POST /api/account/register | login | logout, GET /api/account/me, PUT /api/account/profile (Identity cookie, ADR-012)
     Shelves/CreateShelf     POST /api/shelves
     Shelves/GetShelf        GET  /api/shelves/{shelfId}   (404 for a hidden shelf)
     Shelves/HideShelf       POST /api/shelves/{shelfId}/hide   (soft clear, 204, idempotent, ADR-010)
@@ -65,6 +70,12 @@ src/
       FixSpine              GET  /api/shelves/{shelfId}/spines/{spineId}/suggestions[?q=]   (tap to fix: candidate books / search box)
                             POST /api/shelves/{shelfId}/spines/{spineId}/resolve   (pick a book; remembered as a correction, ADR-011)
                             POST /api/shelves/{shelfId}/spines/{spineId}/dismiss   ("not a book")
+    Lending/                (ADR-012) physical copies, borrow / reserve / loan steps, QR label, copy page
+      Copies                POST /api/shelves/{shelfId}/books/{bookId}/copies, GET /api/shelves/{shelfId}/copies,
+                            GET /api/copies/{id} | /api/copies/by-code/{code}, PUT /api/copies/{id}, GET /api/copies/{id}/label.svg
+      Loans                 POST /api/copies/{id}/borrow | /reserve, POST /api/copies/by-code/{code}/received,
+                            GET /api/loans, GET /api/loans/{id}, POST /api/loans/{id}/{approve|decline|cancel|mailed|received|...}
+      CopyPage              GET /c/{code}   (where a copy's QR sticker points)
       Storage/ Ocr/ Parsing/ Resolution/ Worker/   pipeline pieces behind interfaces, see docs/pipeline.md
 tests/
   Shelfy.Tests            xunit: domain, slice handlers, parser, resolvers, queue/worker (SQLite), API endpoints; recorded JSON fixtures
@@ -104,7 +115,8 @@ dotnet ef migrations add <Name> --project src/Shelfy.Infrastructure --startup-pr
 db/generate-schema.sh        # regenerates db/schema.idempotent.sql (BOM-free)
 ```
 
-Migrations so far: `InitialCreate`, `AddRecognitionPipeline` (RecognitionJobs, DetectedSpines), `AddUploadBatches` (BatchId, TileIndex, TileCount on RecognitionJobs).
+Migrations so far: `InitialCreate`, `AddRecognitionPipeline` (RecognitionJobs, DetectedSpines), `AddUploadBatches` (BatchId, TileIndex, TileCount on RecognitionJobs),
+`AddShelfHidden`, `AddUserCorrections`, `AddAccountsAndLending` (AspNet* Identity tables, Copies, CopyMovements, Loans, Users.MailingAddress).
 
 ## Recognition pipeline
 
@@ -142,6 +154,15 @@ A plain HTML/CSS/JS page (no build step) is served by the API from `src/Shelfy.A
 - `/s/{shelfId}` shareable shelf page (title, author, cover grid, link-preview tags; unknown, hidden or deleted shelf gives a 404 page).
   Public sharing is not switchable yet: `IsPublic` is not enforced because the API is open (see ADR-006).
 
+## Accounts and lending (ADR-012)
+
+Sign in or create an account (`/signin.html`, email + password). A shelf made while signed in belongs to your account: on its page
+(`/s/{id}`) tap a book and choose **Lend this book** to give that physical copy a code and a printable QR label. Others tap a book to
+**Ask to borrow** (or **Reserve** when it is out); you approve, mail it, and they scan the sticker (`/c/{code}`) and tap **I received this**.
+**My loans** (`/loans.html`) shows every request with its next step and your private mailing address, which only the other person of an
+approved loan ever sees. Copies go back to their owner after each loan; pass-along to the next reader is a per-copy option the owner approves.
+Guest shelves keep working without an account but cannot lend.
+
 ## Status
 
 Backend: domain model, PostgreSQL data layer, shelf and book-search slices, and the v1 recognition pipeline
@@ -149,4 +170,4 @@ Backend: domain model, PostgreSQL data layer, shelf and book-search slices, and 
 Stubbed or not verified: Azure Blob storage is a stub, Service Bus is replaced by a database queue, and the Azure AI Vision
 client has not been run against the real service (see [docs/pipeline.md](docs/pipeline.md)).
 The Azure AI Vision client has since been run against the real service (see docs/pipeline.md) and a mobile web UI is live at https://shelfy.ppdac.ltd/.
-Authentication (ADR-006) is not wired up, so the API is open. The MAUI app is next, see [docs/next-maui-app.md](docs/next-maui-app.md).
+Accounts (ASP.NET Core Identity, ADR-012) protect account shelves and lending; guest shelves and reads stay open. Entra External ID (ADR-006) is deferred. The MAUI app is next, see [docs/next-maui-app.md](docs/next-maui-app.md).

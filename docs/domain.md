@@ -11,7 +11,9 @@ The terms below are **frozen**. Do not rename them or introduce synonyms. Changi
 | ShelfBook | One book on one shelf, with its availability status and optional price. |
 | Book | A canonical book record (ISBN, title, author, cover), shared across users. |
 | Trade | An exchange of a book between users, by loan or sale. Not in v1. |
-| Loan | A trade where the book returns to the owner. Not in v1. |
+| Copy | One physical book: permanent Id plus a short sticker code (`7K3M-Q9XA`). Always its owner's; has a home shelf and a current holder/shelf. ADR-012. |
+| CopyMovement | One step in a copy's journey (registered, lent, passed along, returned), with mailed and received times. ADR-012. |
+| Loan | A request to borrow one Copy, from waitlist or request through mailing and receipt to return (or pass-along). The book returns to its owner by default. ADR-012. |
 | Listing | A ShelfBook offered for Loan or Sale. Not in v1. |
 | Recommendation | A suggested Book for a User. Not in v1. |
 | RecognitionJob | One uploaded shelf photo and its processing state (Pending, Processing, Completed, Failed). Recognition module, ADR-008. |
@@ -75,7 +77,7 @@ public class DetectedSpine    // RecognitionJobId, Position, RawText, Confidence
                               // Status (Unresolved|Resolved), BookId, ResolvedIsbn, MatchScore, MatchSource
 ```
 
-Later entities: `Trade`, `Loan`, `Listing`, `Recommendation`. Define them in `docs/requirements` before coding.
+`Copy`, `CopyMovement` and `Loan` exist since ADR-012 (see the state table there). Later entities: `Trade`, `Listing`, `Recommendation`. Define them in `docs/requirements` before coding.
 
 ## Rules
 
