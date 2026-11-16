@@ -60,6 +60,8 @@
   if (header) {
     var nav = el('nav', 'acct');
     header.appendChild(nav);
+    var search = el('a', null, 'Search'); search.href = '/search.html';
+    nav.appendChild(search);
     me().then(function (u) {
       if (u) {
         var loans = el('a', null, 'My loans'); loans.href = '/loans.html';

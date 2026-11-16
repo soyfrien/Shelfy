@@ -14,6 +14,10 @@
 <div class="wrap">
   <header class="top"><h1>📚 Shelfy</h1><span class="tag">Photo in, bookshelf out</span></header>
   <p class="lede">Photo your shelf, then <strong>borrow and lend books with friends</strong> by mail.</p>
+  <form class="sitesearch" action="/search.html" method="get" role="search">
+    <input type="search" name="q" placeholder="Search title, author or ISBN" aria-label="Search title, author or ISBN" enterkeyhint="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button class="btn" type="submit">Search</button>
+  </form>
 
   <section class="card" id="pick">
     <label class="btn" id="pickBtn" for="file">📷 Take or choose a photo of your bookshelf</label>

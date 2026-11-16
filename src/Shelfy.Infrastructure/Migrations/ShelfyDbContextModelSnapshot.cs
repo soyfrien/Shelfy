@@ -171,6 +171,10 @@ namespace Shelfy.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("Isbn13")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -179,6 +183,9 @@ namespace Shelfy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Isbn")
+                        .IsUnique();
+
+                    b.HasIndex("Isbn13")
                         .IsUnique();
 
                     b.ToTable("Books", (string)null);
@@ -531,6 +538,8 @@ namespace Shelfy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("IsPublic", "IsHidden");
 
                     b.ToTable("Shelves", (string)null);
                 });
