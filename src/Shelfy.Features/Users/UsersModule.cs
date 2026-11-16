@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Shelfy.Features.Common.Email;
 using Shelfy.Features.Users.Account;
 using Shelfy.Features.Users.CreateGuest;
+using Shelfy.Features.Users.LibraryCard;
 
 namespace Shelfy.Features.Users;
 
@@ -35,5 +36,5 @@ public static class UsersModule
         return services;
     }
 
-    public static IEndpointRouteBuilder MapUsersModule(this IEndpointRouteBuilder app) => app.MapCreateGuest().MapAccount();
+    public static IEndpointRouteBuilder MapUsersModule(this IEndpointRouteBuilder app) => app.MapCreateGuest().MapAccount().MapLibraryCard();
 }

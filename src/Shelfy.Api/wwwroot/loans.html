@@ -12,6 +12,11 @@
   <header class="top"><a href="/"><h1>📚 Shelfy</h1></a><span class="tag">An Internet library</span></header>
   <p class="notice" id="loading">Loading…</p>
   <section id="main" class="hidden">
+    <h2>My Library card</h2>
+    <figure class="libcard">
+      <img id="libCard" alt="Your Shelfy Library Card, with your name, member number and the date you joined">
+      <figcaption class="cardlinks"><a id="cardDownload" href="/api/account/card.svg" download="shelfy-library-card.svg">Download my card</a></figcaption>
+    </figure>
     <h2>Books I'm borrowing</h2>
     <ul class="loans" id="borrowing"></ul>
     <p class="empty small hidden" id="noBorrowing">Nothing yet. Open a friend's shelf and tap a book to borrow it.</p>
@@ -24,7 +29,7 @@
       <form class="form" id="profileForm">
         <label>Your name <input name="displayName" maxlength="100" required></label>
         <label>City <input name="city" maxlength="100"></label>
-        <label>Mailing address <small>(private: only the other person of an approved loan sees it)</small>
+        <label>Mailing address <small>(private: only the person you lend to or borrow from sees it, once that loan is approved)</small>
           <textarea name="mailingAddress" rows="3" maxlength="500"></textarea></label>
         <button class="btn secondary" type="submit">Save</button>
         <p class="notice hidden" id="saved">Saved.</p>

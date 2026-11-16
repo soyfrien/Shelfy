@@ -102,6 +102,8 @@ The API serves a static mobile web UI from `wwwroot` (published with the app, so
 `/s/{shelfId}` the shareable shelf page; `/health` and `/api/*` are unchanged. HTML, JS and CSS are sent with `Cache-Control: no-cache`,
 so a redeploy shows up on phones at once. nginx must allow bodies of at least 20 MB for the shelfy server block (`client_max_body_size 25m`,
 already in `deploy/nginx-shelfy.ppdac.ltd.conf`); the browser downscales photos before upload, so typical uploads are 1-3 MB.
+Bodies over that limit get a JSON `{"error": ...}` 413 from the `error_page 413 @shelfy_too_large` block in both nginx files, the same shape
+the app uses, and the home page shows its own "too large (max 20 MB)" message on any 413 whatever the body.
 `Program.cs` trusts `X-Forwarded-Proto` from the local nginx so absolute URLs in link-preview tags use https.
 The UI needs no database change; it creates anonymous guest users through `POST /api/guests` (temporary until ADR-006).
 

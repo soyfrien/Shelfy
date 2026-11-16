@@ -305,12 +305,12 @@ public class LendingEndpointTests : IDisposable
         var (owner, ownerId) = await SignUpAsync("Louis");
         var (alice, _) = await SignUpAsync("Alice");
         var (nomad, _) = await SignUpAsync("Nomad", address: null);
-        var (copyId, _) = await LendableCopyAsync(owner, ownerId);
+        var (copyId, code) = await LendableCopyAsync(owner, ownerId);
         await owner.PutAsJsonAsync($"/api/copies/{copyId}", new { allowPassAlong = true });
         var first = (await Json(await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }))).GetProperty("id").GetGuid();
         await StepAsync(owner, first, "approve");
         await StepAsync(owner, first, "mailed");
-        await StepAsync(alice, first, "received");
+        await StepAsync(alice, first, "received", new { code });
         await nomad.PostAsJsonAsync($"/api/copies/{copyId}/reserve", new { });
 
         var refused = await StepAsync(owner, first, "pass-along", expect: HttpStatusCode.BadRequest);
@@ -362,7 +362,7 @@ public class LendingEndpointTests : IDisposable
         var first = (await Json(await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }))).GetProperty("id").GetGuid();
         await StepAsync(owner, first, "approve");
         await StepAsync(owner, first, "mailed");
-        await StepAsync(alice, first, "received");
+        await StepAsync(alice, first, "received", new { code });
         var next = (await Json(await bob.PostAsJsonAsync($"/api/copies/{copyId}/reserve", new { }))).GetProperty("id").GetGuid();
 
         await StepAsync(alice, first, "pass-along", expect: HttpStatusCode.Forbidden);
@@ -383,6 +383,84 @@ public class LendingEndpointTests : IDisposable
         Assert.Equal("Louis", copy.GetProperty("ownerName").GetString());
         Assert.Equal("PassedAlong", copy.GetProperty("history")[2].GetProperty("kind").GetString());
         Assert.Equal(JsonValueKind.Null, (await Json(await alice.GetAsync($"/api/loans/{next}"))).GetProperty("shipTo").ValueKind);
+    }
+
+    [Fact]
+    public async Task The_library_card_is_for_the_signed_in_member_and_links_their_public_shelf()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().GetAsync("/api/account/card.svg")).StatusCode);
+
+        var (louis, louisId) = await SignUpAsync("Louis");
+        Assert.Equal(HttpStatusCode.OK, (await louis.PutAsJsonAsync("/api/account/profile", new { displayName = "Louis <W>" })).StatusCode);
+        var r = await louis.GetAsync("/api/account/card.svg");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("image/svg+xml", r.Content.Headers.ContentType?.MediaType);
+        var svg = await r.Content.ReadAsStringAsync();
+        Assert.Contains("Louis &lt;W&gt;", svg);
+        Assert.Contains(Shelfy.Features.Users.LibraryCard.LibraryCardSvg.MemberNumber(louisId), svg);
+        Assert.Contains(Shelfy.Features.Lending.Labels.QrCode.Encode("http://localhost/").ToPath(0), svg);   // no public shelf: the site
+
+        // Another member's card looks different.
+        var (other, _) = await SignUpAsync("Louis");
+        Assert.NotEqual(svg, await (await other.GetAsync("/api/account/card.svg")).Content.ReadAsStringAsync());
+
+        var (shelfId, _) = await ShelfWithBookAsync(louis, louisId);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShelfyDbContext>();
+            (await db.Shelves.FindAsync(shelfId))!.IsPublic = true;
+            await db.SaveChangesAsync();
+        }
+
+        var withShelf = await (await louis.GetAsync("/api/account/card.svg")).Content.ReadAsStringAsync();
+        Assert.Contains(Shelfy.Features.Lending.Labels.QrCode.Encode($"http://localhost/s/{shelfId}").ToPath(0), withShelf);
+    }
+
+    [Fact]
+    public async Task Marking_a_loan_received_needs_the_copys_sticker_code()
+    {
+        var (owner, ownerId) = await SignUpAsync("Louis");
+        var (alice, _) = await SignUpAsync("Alice", "2 Alice Rd");
+        var (copyId, code) = await LendableCopyAsync(owner, ownerId);
+        var loanId = (await Json(await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }))).GetProperty("id").GetGuid();
+        await StepAsync(owner, loanId, "approve");
+        await StepAsync(owner, loanId, "mailed");
+
+        var missing = await StepAsync(alice, loanId, "received", expect: HttpStatusCode.BadRequest);
+        Assert.Contains("code on the book", missing.GetProperty("error").GetString());
+        var wrong = await StepAsync(alice, loanId, "received", new { code = "0000-0000" }, HttpStatusCode.BadRequest);
+        Assert.Contains("doesn't match", wrong.GetProperty("error").GetString());
+        Assert.Equal("Mailed", (await Json(await alice.GetAsync($"/api/loans/{loanId}"))).GetProperty("status").GetString());
+
+        // Lower case and without the dash still counts, like the by-code route.
+        var sloppy = code.Replace("-", "").ToLowerInvariant();
+        Assert.Equal("Received", (await StepAsync(alice, loanId, "received", new { code = sloppy })).GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Strangers_with_the_link_cannot_delete_hide_upload_to_or_fix_an_account_shelf()
+    {
+        var (owner, ownerId) = await SignUpAsync("Louis");
+        var (other, _) = await SignUpAsync("Mallory");
+        var (shelfId, _) = await ShelfWithBookAsync(owner, ownerId);
+        var anon = NewClient();
+        var spine = Guid.NewGuid();
+
+        foreach (var (client, expected) in new[] { (anon, HttpStatusCode.Unauthorized), (other, HttpStatusCode.Forbidden) })
+        {
+            Assert.Equal(expected, (await client.DeleteAsync($"/api/shelves/{shelfId}")).StatusCode);
+            Assert.Equal(expected, (await client.PostAsync($"/api/shelves/{shelfId}/hide", null)).StatusCode);
+            Assert.Equal(expected, (await client.PostAsJsonAsync($"/api/shelves/{shelfId}/spines/{spine}/resolve", new { title = "X" })).StatusCode);
+            Assert.Equal(expected, (await client.PostAsJsonAsync($"/api/shelves/{shelfId}/spines/{spine}/dismiss", new { })).StatusCode);
+            using var form = new MultipartFormDataContent();
+            form.Add(new ByteArrayContent(new byte[] { 0xFF, 0xD8, 0xFF }), "file", "shelf.jpg");
+            Assert.Equal(expected, (await client.PostAsync($"/api/shelves/{shelfId}/photos", form)).StatusCode);
+        }
+
+        // Nothing changed: the shelf is still there, still visible and still has its book.
+        var shelf = await Json(await anon.GetAsync($"/api/shelves/{shelfId}"));
+        Assert.Equal(1, shelf.GetProperty("books").GetArrayLength());
+        Assert.Equal(HttpStatusCode.OK, (await anon.GetAsync($"/s/{shelfId}")).StatusCode);   // sharing by link keeps working
     }
 
     [Fact]

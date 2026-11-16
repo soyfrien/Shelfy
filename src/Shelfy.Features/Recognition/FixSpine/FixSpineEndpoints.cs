@@ -5,7 +5,7 @@ using Shelfy.Features.Common;
 
 namespace Shelfy.Features.Recognition.FixSpine;
 
-/// <summary>Tap to fix (ADR-011): suggestions, resolve and dismiss for one unmatched spine of a shelf. Open API, like the rest.</summary>
+/// <summary>Tap to fix (ADR-011): suggestions, resolve and dismiss for one unmatched spine of a shelf. Suggestions are open; resolve and dismiss on an account shelf need its owner (ShelfOwnerFilter).</summary>
 public static class FixSpineEndpoints
 {
     public static IEndpointRouteBuilder MapFixSpine(this IEndpointRouteBuilder app)

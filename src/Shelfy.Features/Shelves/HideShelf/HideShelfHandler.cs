@@ -10,7 +10,7 @@ namespace Shelfy.Features.Shelves.HideShelf;
 /// </summary>
 public class HideShelfHandler(ShelfyDbContext db, TimeProvider clock)
 {
-    // TODO(ADR-006): only the owner may hide a shelf once authentication exists.
+    // Who may call this is enforced by ShelfOwnerFilter on the endpoint: only the owner for account shelves, the link for guest shelves.
     public async Task<HandlerResult<bool>> HandleAsync(Guid shelfId, CancellationToken ct = default)
     {
         var shelf = await db.Shelves.FirstOrDefaultAsync(s => s.Id == shelfId, ct);

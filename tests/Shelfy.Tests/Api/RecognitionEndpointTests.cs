@@ -116,6 +116,32 @@ public class RecognitionEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Upload_Over_The_Request_Limit_Gets_The_Same_Friendly_Json_413()
+    {
+        var shelfId = await NewShelfAsync();
+        var bytes = TestImages.Jpeg(26 * 1024 * 1024); // over the 24 MB multipart limit, not just the 20 MB photo limit
+
+        var response = await _client.PostAsync($"/api/shelves/{shelfId}/photos", Form(bytes, "huge.jpg"));
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("too large (max 20 MB)", await response.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(49, 800)]
+    public async Task Upload_Rejects_A_Tiny_Photo_Up_Front(int width, int height)
+    {
+        var shelfId = await NewShelfAsync();
+
+        var response = await _client.PostAsync($"/api/shelves/{shelfId}/photos", Form(TestImages.PngOfSize(width, height), "tiny.png"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("That photo is too small", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Upload_Requires_A_File_Field()
     {
         var shelfId = await NewShelfAsync();

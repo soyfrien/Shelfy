@@ -60,6 +60,8 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
     }
 
     /// <summary>One step on an existing loan, by action name (see <see cref="LendingActions"/>).</summary>
+    internal const string EnterStickerCode = "Enter the code on the book's sticker to confirm it arrived.";
+
     public async Task<HandlerResult<LoanDto>> ActAsync(Guid? me, Guid loanId, string action, ReceiveRequest? body = null, CancellationToken ct = default)
     {
         if (me is null)
@@ -111,7 +113,18 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
                     db.CopyMovements.Add(Domain.Lending.MarkMailed(loan, copy, loans, me.Value, now));
                     break;
                 case LendingActions.Received:
-                    var shelfId = body?.ShelfId;
+                    // The sticker code proves the book actually arrived; without it anyone party to the loan could mark it received.
+                    if (string.IsNullOrWhiteSpace(body?.Code))
+                    {
+                        return HandlerResult<LoanDto>.Invalid(EnterStickerCode);
+                    }
+
+                    if (CopyCode.Normalize(body.Code) != copy.Code)
+                    {
+                        return HandlerResult<LoanDto>.Invalid("That code doesn't match this book's sticker. Check the code and try again.");
+                    }
+
+                    var shelfId = body.ShelfId;
                     if (shelfId is not null && !await db.Shelves.AnyAsync(s => s.Id == shelfId && s.UserId == me && !s.IsHidden, ct))
                     {
                         return HandlerResult<LoanDto>.Invalid("Choose one of your own shelves.");
@@ -171,7 +184,7 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
         var incoming = loans.FirstOrDefault(l => l.Status == LoanStatus.Mailed && l.BorrowerId == me);
         if (incoming is not null)
         {
-            return await ActAsync(me, incoming.Id, LendingActions.Received, body, ct);
+            return await ActAsync(me, incoming.Id, LendingActions.Received, body with { Code = normalized }, ct);
         }
 
         var homecoming = loans.FirstOrDefault(l => l.Status == LoanStatus.ReturnMailed && l.OwnerId == me);

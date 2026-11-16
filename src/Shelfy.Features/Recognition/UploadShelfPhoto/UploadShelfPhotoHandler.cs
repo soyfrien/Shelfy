@@ -16,6 +16,7 @@ public class UploadShelfPhotoHandler(
     TimeProvider clock)
 {
     public const long MaxPhotoBytes = 20L * 1024 * 1024;
+    public const string TooLargeMessage = "That photo is too large (max 20 MB). Try a smaller photo or a lower camera resolution.";
 
     public async Task<HandlerResult<UploadShelfPhotoResponse>> HandleAsync(UploadShelfPhotoRequest request, CancellationToken ct = default)
     {
@@ -39,7 +40,7 @@ public class UploadShelfPhotoHandler(
 
         if (request.DeclaredLength is > MaxPhotoBytes)
         {
-            return HandlerResult<UploadShelfPhotoResponse>.TooLarge("The photo is larger than the 20 MB limit.");
+            return HandlerResult<UploadShelfPhotoResponse>.TooLarge(TooLargeMessage);
         }
 
         // Identify the format from the first bytes, not from the name or declared type.
@@ -74,10 +75,17 @@ public class UploadShelfPhotoHandler(
         catch (PhotoTooLargeException)
         {
             await storage.DeleteAsync(key, CancellationToken.None);
-            return HandlerResult<UploadShelfPhotoResponse>.TooLarge("The photo is larger than the 20 MB limit.");
+            return HandlerResult<UploadShelfPhotoResponse>.TooLarge(TooLargeMessage);
         }
 
         var hash = metered.Sha256Hex;
+
+        // Too small for OCR: say so now instead of failing later with the OCR service's raw error.
+        if (await DimensionsAsync(key, format, ct) is { } size && Math.Min(size.Width, size.Height) < PhotoDimensions.MinSidePixels)
+        {
+            await storage.DeleteAsync(key, CancellationToken.None);
+            return HandlerResult<UploadShelfPhotoResponse>.Invalid(TooSmallMessage(size.Width, size.Height));
+        }
 
         try
         {
@@ -110,6 +118,22 @@ public class UploadShelfPhotoHandler(
         {
             await storage.DeleteAsync(key, CancellationToken.None);
             throw;
+        }
+    }
+
+    public static string TooSmallMessage(int width, int height) =>
+        $"That photo is too small ({width} x {height} pixels). Use a photo at least {PhotoDimensions.MinSidePixels} pixels on each side, ideally straight from your camera.";
+
+    private async Task<(int Width, int Height)?> DimensionsAsync(string key, PhotoFormat format, CancellationToken ct)
+    {
+        try
+        {
+            await using var stored = await storage.OpenReadAsync(key, ct);
+            return await PhotoDimensions.ReadAsync(stored, format, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null; // can't tell: let it through as before
         }
     }
 

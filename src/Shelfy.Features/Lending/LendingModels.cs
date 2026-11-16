@@ -9,7 +9,9 @@ public record UpdateCopyRequest(bool? Available = null, bool? AllowPassAlong = n
 
 public record AskRequest(string? Message = null);
 
-public record ReceiveRequest(Guid? ShelfId = null);
+/// <param name="ShelfId">Which of the receiver's shelves the copy goes on (optional).</param>
+/// <param name="Code">The copy's sticker code. Required to mark a loan received: proof the book is in hand. Case, spaces and dashes don't matter.</param>
+public record ReceiveRequest(Guid? ShelfId = null, string? Code = null);
 
 // Responses
 
