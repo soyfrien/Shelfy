@@ -48,8 +48,24 @@ public static class LibraryCardEndpoint
             .Produces(StatusCodes.Status200OK, contentType: "image/svg+xml")
             .ProducesProblem(StatusCodes.Status401Unauthorized);
 
+        // The floating sample card that signed-out visitors see: a fixed demo member, so it is the same for everyone and cacheable.
+        app.MapGet("/api/card/sample.svg", (HttpRequest http, IConfiguration config, IOptions<EmailOptions> email, TimeProvider clock) =>
+                {
+                    var svg = LibraryCardSvg.Render(SampleId, SampleName, clock.GetUtcNow().UtcDateTime, Origin(http, config, email.Value) + "/signin.html#register");
+                    http.HttpContext.Response.Headers.CacheControl = "public, max-age=3600";
+                    return Results.Content(svg, "image/svg+xml; charset=utf-8");
+                })
+            .WithName("GetSampleLibraryCard")
+            .WithTags("Account")
+            .Produces(StatusCodes.Status200OK, contentType: "image/svg+xml");
+
         return app;
     }
+
+    /// <summary>The demo member behind the sample card (never a real account: ids are random v4 GUIDs).</summary>
+    public static readonly Guid SampleId = new("5e1f0000-0000-4000-8000-00000000ca7d");
+
+    public const string SampleName = "Your name here";
 
     private static string Origin(HttpRequest http, IConfiguration config, EmailOptions email)
     {

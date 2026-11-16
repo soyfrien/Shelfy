@@ -48,6 +48,38 @@ public class WebUiTests : IDisposable
     }
 
     [Fact]
+    public async Task Sample_Library_Card_Is_Public_Cacheable_And_Leads_To_Sign_Up()
+    {
+        var r = await _client.GetAsync("/api/card/sample.svg");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("image/svg+xml", r.Content.Headers.ContentType!.MediaType);
+        Assert.Contains("public", r.Headers.CacheControl!.ToString());
+        var svg = await r.Content.ReadAsStringAsync();
+        Assert.Contains("Your name here", svg);
+        Assert.Contains("SHELFY LIBRARY CARD", svg);
+        var sampleId = Shelfy.Features.Users.LibraryCard.LibraryCardEndpoint.SampleId;
+        Assert.Contains(Shelfy.Features.Users.LibraryCard.LibraryCardSvg.MemberNumber(sampleId), svg);
+        Assert.Contains(Shelfy.Features.Lending.Labels.QrCode.Encode("http://localhost/signin.html#register").ToPath(0), svg);
+        Assert.Equal(svg, await _client.GetStringAsync("/api/card/sample.svg"));   // the same card for everyone
+        System.Xml.Linq.XDocument.Parse(svg);
+    }
+
+    [Fact]
+    public async Task Every_Page_Gets_The_Floating_Card_Script()
+    {
+        foreach (var page in new[] { "/", "/loans.html", "/signin.html", "/copy.html", "/shelf.html" })
+        {
+            Assert.Contains("/floatcard.js", await _client.GetStringAsync(page));
+        }
+
+        var js = await _client.GetStringAsync("/floatcard.js");
+        Assert.Contains("/api/card/sample.svg", js);
+        Assert.Contains("/api/account/card.svg", js);
+        Assert.Contains("aria-label", js);
+        Assert.Contains("prefers-reduced-motion", await _client.GetStringAsync("/style.css"));
+    }
+
+    [Fact]
     public async Task Home_Page_Is_Served_As_Html_At_The_Root()
     {
         var response = await _client.GetAsync("/");
