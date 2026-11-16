@@ -104,7 +104,10 @@ public class CopiesHandler(ShelfyDbContext db, ICopyCodeGenerator codes, TimePro
             .ToListAsync(ct);
         var ids = copies.Select(c => c.Id).ToList();
         var loans = await db.Loans.AsNoTracking().Where(l => ids.Contains(l.CopyId)).WhereOpen().ToListAsync(ct);
-        var users = await LendingQueries.UsersAsync(db, copies.Select(c => (Guid?)c.OwnerId), ct);
+        var names = await LendingQueries.UsersAsync(db, copies.Select(c => (Guid?)c.OwnerId)
+            .Concat(loans.Select(l => (Guid?)l.OwnerId))
+            .Concat(loans.Select(l => (Guid?)l.BorrowerId))
+            .Concat(loans.Select(l => l.SenderId)), ct);
 
         var list = copies
             .OrderBy(c => c.Book!.Title).ThenBy(c => c.CreatedAt)
@@ -112,8 +115,8 @@ public class CopiesHandler(ShelfyDbContext db, ICopyCodeGenerator codes, TimePro
             {
                 var mine = loans.Where(l => l.CopyId == c.Id).ToList();
                 return new ShelfCopyDto(c.Id, c.Code, c.BookId, c.Book!.Title, c.Book.Author, c.Book.CoverUrl, c.Status,
-                    users.Name(c.OwnerId), c.HomeShelfId == shelfId, c.HomeShelfId != shelfId && c.CurrentShelfId == shelfId,
-                    mine.Count(l => l.Status == LoanStatus.Waitlisted), LendingQueries.Viewer(c, mine, me));
+                    names.Name(c.OwnerId), c.HomeShelfId == shelfId, c.HomeShelfId != shelfId && c.CurrentShelfId == shelfId,
+                    mine.Count(l => l.Status == LoanStatus.Waitlisted), LendingQueries.Viewer(c, mine, me, names));
             })
             .ToList();
         return HandlerResult<IReadOnlyList<ShelfCopyDto>>.Ok(list);
@@ -135,19 +138,22 @@ public class CopiesHandler(ShelfyDbContext db, ICopyCodeGenerator codes, TimePro
         }
 
         var (copy, loans, movements) = agg;
-        var users = await LendingQueries.UsersAsync(db,
-            movements.SelectMany(m => new[] { m.FromUserId, (Guid?)m.ToUserId }).Append(copy.OwnerId).Append(copy.CurrentHolderId), ct);
+        var names = await LendingQueries.UsersAsync(db,
+            movements.SelectMany(m => new[] { m.FromUserId, (Guid?)m.ToUserId }).Append(copy.OwnerId).Append(copy.CurrentHolderId)
+                .Concat(loans.Select(l => (Guid?)l.OwnerId))
+                .Concat(loans.Select(l => (Guid?)l.BorrowerId))
+                .Concat(loans.Select(l => l.SenderId)), ct);
         var history = movements
             .OrderBy(m => m.StartedAt)
-            .Select(m => new MovementDto(m.Kind, m.FromUserId is null ? null : users.Name(m.FromUserId), users.Name(m.ToUserId), m.StartedAt, m.ReceivedAt))
+            .Select(m => new MovementDto(m.Kind, m.FromUserId is null ? null : names.Name(m.FromUserId), names.Name(m.ToUserId), m.StartedAt, m.ReceivedAt))
             .ToList();
         var open = loans.Where(l => l.IsOpen).ToList();
         var b = copy.Book!;
         return HandlerResult<CopyDetailResponse>.Ok(new CopyDetailResponse(
             copy.Id, copy.Code, CopyCode.Format(copy.Code), copy.BookId, b.Title, b.Author, b.Isbn, b.CoverUrl, copy.Status,
-            users.Name(copy.OwnerId), copy.HomeShelfId, users.Name(copy.CurrentHolderId), copy.AllowPassAlong, copy.Condition,
+            names.Name(copy.OwnerId), copy.HomeShelfId, names.Name(copy.CurrentHolderId), copy.AllowPassAlong, copy.Condition,
             copy.Notes, open.Count(l => l.Status == LoanStatus.Waitlisted), copy.CreatedAt, history,
-            LendingQueries.Viewer(copy, open, me)));
+            LendingQueries.Viewer(copy, open, me, names)));
     }
 
     public async Task<HandlerResult<CopyDetailResponse>> UpdateAsync(Guid? me, Guid copyId, UpdateCopyRequest request, CancellationToken ct = default)

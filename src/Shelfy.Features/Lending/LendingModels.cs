@@ -32,14 +32,14 @@ public record CopyDetailResponse(
     CopyStatus Status, string OwnerName, Guid? HomeShelfId, string HolderName, bool AllowPassAlong, string? Condition,
     string? Notes, int Waiting, DateTime CreatedAt, IReadOnlyList<MovementDto> History, CopyViewerDto Viewer);
 
-public record LoanSummaryDto(Guid Id, LoanStatus Status, IReadOnlyList<string> Actions);
+public record LoanSummaryDto(Guid Id, LoanStatus Status, string StatusLabel, IReadOnlyList<string> Actions);
 
 /// <summary>
 /// A loan as one of its parties sees it. <see cref="ShipTo"/> is the address the caller needs to mail to (or the other party's
 /// address while the loan is approved and in progress); null otherwise. Never given to anyone outside the loan.
 /// </summary>
 public record LoanDto(
-    Guid Id, LoanStatus Status, string Role, Guid CopyId, string CopyCode, string Title, string Author, string? CoverUrl,
+    Guid Id, LoanStatus Status, string StatusLabel, string Role, Guid CopyId, string CopyCode, string Title, string Author, string? CoverUrl,
     string OwnerName, string BorrowerName, string? SenderName, bool IsPassAlong, int? WaitlistPosition, string? Message,
     string? ShipToName, string? ShipTo, IReadOnlyList<string> Actions,
     DateTime CreatedAt, DateTime UpdatedAt, DateTime? MailedAt, DateTime? ReceivedAt);

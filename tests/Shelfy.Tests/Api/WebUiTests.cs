@@ -32,6 +32,12 @@ public class WebUiTests : IDisposable
         Assert.Contains("'Forge Library card'", account);
         Assert.Contains("'#register'", account);
         Assert.Contains("to borrow, reserve, or approve requests", account);
+        Assert.Contains("Waiting on ", account);
+        Assert.DoesNotContain("Waiting for the owner", account);
+        Assert.DoesNotContain("Owner asked for it back", account);
+        var shelfJs = await _client.GetStringAsync("/shelf.js");
+        Assert.Contains("isn’t lending this book (yet).", shelfJs);
+        Assert.DoesNotContain("The owner isn’t lending this book (yet).", shelfJs);
         var signin = await _client.GetStringAsync("/signin.html");
         Assert.Contains("Your library card is forged!", signin);
         Assert.DoesNotContain("other person of a loan", signin);

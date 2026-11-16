@@ -264,7 +264,9 @@ public class LendingEndpointTests : IDisposable
         var (bob, _) = await SignUpAsync("Bob");
         var (copyId, _) = await LendableCopyAsync(owner, ownerId);
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await noAddress.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { })).StatusCode);
+        var noAddr = await Json(await noAddress.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }));
+        Assert.Contains("so Louis can send you the book", noAddr.GetProperty("error").GetString());
+        Assert.DoesNotContain("the owner", noAddr.GetProperty("error").GetString(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(HttpStatusCode.Forbidden, (await owner.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Created, (await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await bob.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { })).StatusCode);
@@ -276,7 +278,9 @@ public class LendingEndpointTests : IDisposable
 
         var forShelf = await Json(await bob.GetAsync($"/api/copies/{copyId}"));
         Assert.Equal(1, forShelf.GetProperty("waiting").GetInt32());
-        Assert.Equal("Waitlisted", forShelf.GetProperty("viewer").GetProperty("myLoan").GetProperty("status").GetString());
+        var myLoan = forShelf.GetProperty("viewer").GetProperty("myLoan");
+        Assert.Equal("Waitlisted", myLoan.GetProperty("status").GetString());
+        Assert.Equal("On the waitlist", myLoan.GetProperty("statusLabel").GetString());
     }
 
     [Fact]
@@ -536,4 +540,98 @@ public class LendingEndpointTests : IDisposable
             Assert.Equal(HttpStatusCode.OK, (await anon.GetAsync(path)).StatusCode);
         }
     }
+
+    [Fact]
+    public async Task Loan_status_labels_use_the_persons_name_or_waiting_on_you()
+    {
+        var (owner, ownerId) = await SignUpAsync("Louis");
+        var (alice, _) = await SignUpAsync("Alice");
+        var (copyId, code) = await LendableCopyAsync(owner, ownerId);
+
+        var asked = await Json(await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }));
+        var loanId = asked.GetProperty("id").GetGuid();
+        Assert.Equal("Louis", asked.GetProperty("ownerName").GetString());
+        Assert.Equal("Alice", asked.GetProperty("borrowerName").GetString());
+        Assert.Equal("Waiting on Louis", asked.GetProperty("statusLabel").GetString());
+        Assert.Equal("Waiting on you", (await Json(await owner.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+        Assert.Equal("Waiting on Louis", (await Json(await alice.GetAsync($"/api/copies/{copyId}"))).GetProperty("viewer").GetProperty("myLoan").GetProperty("statusLabel").GetString());
+
+        await StepAsync(owner, loanId, "approve");
+        Assert.Equal("Waiting on Louis to mail it", (await Json(await alice.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+        Assert.Equal("Waiting on you to mail it", (await Json(await owner.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+
+        await StepAsync(owner, loanId, "mailed");
+        Assert.Equal("In the mail", (await Json(await alice.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+
+        await StepAsync(alice, loanId, "received", new { code });
+        await StepAsync(owner, loanId, "request-return");
+        Assert.Equal("Louis asked for it back", (await Json(await alice.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+        Assert.Equal("You asked for it back", (await Json(await owner.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+
+        await StepAsync(alice, loanId, "return-mailed");
+        Assert.Equal("Waiting on Louis", (await Json(await alice.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+        Assert.Equal("Waiting on you", (await Json(await owner.GetAsync($"/api/loans/{loanId}"))).GetProperty("statusLabel").GetString());
+    }
+
+    [Fact]
+    public async Task Names_fall_back_to_the_email_local_part_and_never_leak_the_email()
+    {
+        var (owner, ownerId) = await SignUpAsync("Louis");
+        var (reader, _) = await SignUpAsync("Reader");
+        var (copyId, _) = await LendableCopyAsync(owner, ownerId);
+        Assert.Equal(HttpStatusCode.OK, (await owner.PutAsJsonAsync("/api/account/profile", new { displayName = "Louis <W>" })).StatusCode);
+
+        var email = "";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShelfyDbContext>();
+            var user = await db.Users.FindAsync(ownerId);
+            var account = await db.Accounts.FindAsync(ownerId);
+            Assert.NotNull(user);
+            Assert.NotNull(account);
+            email = account!.Email!;
+            user!.DisplayName = "";
+            await db.SaveChangesAsync();
+        }
+
+        var local = email[..email.IndexOf('@')];
+        var asked = await Json(await reader.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { }));
+        Assert.Equal(local, asked.GetProperty("ownerName").GetString());
+        Assert.Equal("Waiting on " + local, asked.GetProperty("statusLabel").GetString());
+        var raw = asked.GetRawText();
+        Assert.DoesNotContain(email, raw);
+        Assert.DoesNotContain("Louis &lt;W&gt;", raw);
+
+        // A display name with markup is returned as the raw name (the UI HTML-escapes via textContent).
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShelfyDbContext>();
+            (await db.Users.FindAsync(ownerId))!.DisplayName = "Louis <W>";
+            await db.SaveChangesAsync();
+        }
+
+        var labeled = await Json(await reader.GetAsync($"/api/loans/{asked.GetProperty("id").GetGuid()}"));
+        Assert.Equal("Louis <W>", labeled.GetProperty("ownerName").GetString());
+        Assert.Equal("Waiting on Louis <W>", labeled.GetProperty("statusLabel").GetString());
+        Assert.DoesNotContain("&lt;", labeled.GetRawText());
+
+        var shelf = await Json(await NewClient().GetAsync($"/api/shelves/{(await Json(await owner.GetAsync($"/api/copies/{copyId}"))).GetProperty("homeShelfId").GetGuid()}"));
+        Assert.Equal("Louis <W>", shelf.GetProperty("ownerName").GetString());
+    }
+
+    [Fact]
+    public async Task Unavailable_copy_error_names_the_owner()
+    {
+        var (owner, ownerId) = await SignUpAsync("Louis");
+        var (alice, _) = await SignUpAsync("Alice");
+        var (copyId, _) = await LendableCopyAsync(owner, ownerId);
+        Assert.Equal(HttpStatusCode.OK, (await owner.PutAsJsonAsync($"/api/copies/{copyId}", new { available = false })).StatusCode);
+
+        var r = await alice.PostAsJsonAsync($"/api/copies/{copyId}/borrow", new { });
+        Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
+        var error = (await Json(r)).GetProperty("error").GetString();
+        Assert.Contains("Louis isn't lending this copy right now", error);
+        Assert.DoesNotContain("The owner", error);
+    }
+
 }

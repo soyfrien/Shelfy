@@ -38,7 +38,8 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
 
         if (!reserve && !await HasAddressAsync(me.Value, ct))
         {
-            return HandlerResult<LoanDto>.Invalid("Add your mailing address to your profile first, so the owner can send you the book.");
+            var ownerName = await NameOfAsync(agg.Copy.OwnerId, ct);
+            return HandlerResult<LoanDto>.Invalid($"Add your mailing address to your profile first, so {ownerName} can send you the book.");
         }
 
         var now = Now;
@@ -51,7 +52,7 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
         }
         catch (LendingException ex)
         {
-            return HandlerResult<LoanDto>.From(ex);
+            return HandlerResult<LoanDto>.From(ex.WithOwnerName(await NameOfAsync(agg.Copy.OwnerId, ct)));
         }
 
         db.Loans.Add(loan);
@@ -156,7 +157,7 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
         }
         catch (LendingException ex)
         {
-            return HandlerResult<LoanDto>.From(ex);
+            return HandlerResult<LoanDto>.From(ex.WithOwnerName(await NameOfAsync(loan.OwnerId, ct)));
         }
 
         return await SaveAsync(me.Value, agg, loan, ct);
@@ -260,14 +261,14 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
         var copies = await db.Copies.AsNoTracking().Include(c => c.Book).Where(c => copyIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, ct);
         var openByCopy = (await db.Loans.AsNoTracking().Where(l => copyIds.Contains(l.CopyId)).WhereOpen().ToListAsync(ct))
             .GroupBy(l => l.CopyId).ToDictionary(g => g.Key, g => (IReadOnlyCollection<Loan>)g.ToList());
-        var users = await LendingQueries.UsersAsync(db, loans.SelectMany(l => new[] { (Guid?)l.OwnerId, l.BorrowerId, l.SenderId }), ct);
+        var names = await LendingQueries.UsersAsync(db, loans.SelectMany(l => new[] { (Guid?)l.OwnerId, l.BorrowerId, l.SenderId }), ct);
 
         return loans.Select(l =>
         {
             var copy = copies[l.CopyId];
             var open = openByCopy.GetValueOrDefault(l.CopyId) ?? [];
-            var role = l.BorrowerId == me ? "borrower" : l.OwnerId == me ? "owner" : "sender";
-            var (shipToName, shipTo) = Address(l, me, users);
+            var role = LendingQueries.Role(l, me);
+            var (shipToName, shipTo) = Address(l, me, names);
             int? position = null;
             if (l.Status == LoanStatus.Waitlisted)
             {
@@ -275,8 +276,12 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
                     .TakeWhile(o => o.Id != l.Id).Count() + 1;
             }
 
-            return new LoanDto(l.Id, l.Status, role, copy.Id, CopyCode.Format(copy.Code), copy.Book!.Title, copy.Book.Author, copy.Book.CoverUrl,
-                users.Name(l.OwnerId), users.Name(l.BorrowerId), l.SenderId is null ? null : users.Name(l.SenderId), l.IsPassAlong, position,
+            var ownerName = names.Name(l.OwnerId);
+            var borrowerName = names.Name(l.BorrowerId);
+            var senderName = l.SenderId is null ? null : names.Name(l.SenderId);
+            return new LoanDto(l.Id, l.Status, LoanStatusLabels.For(l, role, ownerName, senderName), role, copy.Id, CopyCode.Format(copy.Code),
+                copy.Book!.Title, copy.Book.Author, copy.Book.CoverUrl,
+                ownerName, borrowerName, senderName, l.IsPassAlong, position,
                 l.Message, shipToName, shipTo, LendingActions.For(l, copy, open, me), l.CreatedAt, l.UpdatedAt, l.MailedAt, l.ReceivedAt);
         }).ToList();
     }
@@ -285,7 +290,7 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
     /// The privacy rule for mailing addresses (ADR-012): only while a loan is approved and in progress, the owner and the borrower
     /// see each other's address, and a pass-along sender sees the borrower's address until the copy has arrived. Nobody else, never.
     /// </summary>
-    public static (string? Name, string? Address) Address(Loan loan, Guid me, IReadOnlyDictionary<Guid, User> users)
+    private static (string? Name, string? Address) Address(Loan loan, Guid me, NameDirectory names)
     {
         if (!Loan.AddressesShared.Contains(loan.Status))
         {
@@ -302,10 +307,13 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
             other = loan.BorrowerId;
         }
 
-        return other is not null && users.TryGetValue(other.Value, out var u) ? (u.DisplayName, u.MailingAddress) : (null, null);
+        return other is not null && names.TryGetUser(other.Value, out var u) ? (names.Name(other), u.MailingAddress) : (null, null);
     }
 
     private static bool IsParty(Loan loan, Guid me) => loan.BorrowerId == me || loan.OwnerId == me || loan.SenderId == me;
+
+    private async Task<string> NameOfAsync(Guid userId, CancellationToken ct) =>
+        (await NameDirectory.LoadAsync(db, [userId], ct)).Name(userId);
 
     public const string ReaderHasNoAddress = "The reader hasn't added a mailing address yet, so there's nowhere to send the book. Try again once they have.";
 

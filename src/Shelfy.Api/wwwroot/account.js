@@ -32,11 +32,27 @@
   }
   var STATUS = {
     Available: 'Available to borrow', Reserved: 'Requested', OnLoan: 'On loan', InTransit: 'In the mail', Unavailable: 'Not lending right now',
-    Waitlisted: 'On the waitlist', Requested: 'Waiting for the owner', Approved: 'Approved, to be mailed', Declined: 'Declined',
-    Cancelled: 'Cancelled', Mailed: 'In the mail', Received: 'Received', ReturnRequested: 'Owner asked for it back',
+    Waitlisted: 'On the waitlist', Declined: 'Declined',
+    Cancelled: 'Cancelled', Mailed: 'In the mail', Received: 'Received',
     ReturnMailed: 'Mailed back', Returned: 'Returned', PassedOn: 'Passed on to the next reader'
   };
-  function statusText(s) { return STATUS[s] || s; }
+  // Names arrive via textContent (never innerHTML), which HTML-escapes them. Prefer the API's statusLabel when present.
+  function waitingOn(name, isYou, suffix) {
+    return 'Waiting on ' + (isYou ? 'you' : (name || 'someone')) + (suffix || '');
+  }
+  function statusText(s, ctx) {
+    ctx = ctx || {};
+    if (ctx.statusLabel) return ctx.statusLabel;
+    var owner = ctx.ownerName;
+    var sender = ctx.senderName || owner;
+    var isOwner = ctx.role === 'owner' || ctx.isOwner;
+    var isSender = ctx.role === 'sender' || (isOwner && !ctx.isPassAlong);
+    if (s === 'Requested') return waitingOn(owner, isOwner);
+    if (s === 'Approved') return waitingOn(sender, isSender && ctx.role !== 'borrower', ' to mail it');
+    if (s === 'ReturnRequested') return (isOwner ? 'You' : (owner || 'Someone')) + ' asked for it back';
+    if (s === 'ReturnMailed') return waitingOn(owner, isOwner);
+    return STATUS[s] || s;
+  }
   function signInUrl() { return '/signin.html?next=' + encodeURIComponent(location.pathname + location.search); }
 
   // Header links.
