@@ -1,6 +1,6 @@
 # ADR-006: Use Microsoft Entra External ID for identity
 
-- Status: Accepted
+- Status: Accepted (deferred: accounts use ASP.NET Core Identity first, see ADR-012; Entra can be added as an external login)
 - Date: 2026-10-24
 
 ## Context

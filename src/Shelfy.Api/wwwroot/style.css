@@ -136,3 +136,41 @@ mark { background: #ffe08a; color: inherit; border-radius: 3px; padding: 0 1px; 
 .modal.busy .sheet { opacity: .7; }
 body.sheet-open { overflow: hidden; }
 .toast { position: fixed; left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom)); max-width: 480px; margin: 0 auto; background: #2b2118; color: #fff; padding: 12px 16px; border-radius: 12px; z-index: 20; box-shadow: 0 4px 16px rgba(0, 0, 0, .3); }
+/* Accounts and lending (ADR-012). */
+.wrap.narrow { max-width: 560px; }
+header.top .acct { margin-left: auto; display: flex; gap: 12px; align-items: baseline; font-size: .92rem; }
+header.top .acct a { color: var(--accent); text-decoration: underline; }
+header.top .acct .link { padding: 0; font-size: .92rem; }
+.tabs { display: flex; gap: 8px; margin: 8px 0; }
+.tab { flex: 1; border: 2px solid var(--accent); background: transparent; color: var(--accent); border-radius: var(--radius); padding: 10px; font: inherit; font-weight: 600; cursor: pointer; }
+.tab.on { background: var(--accent); color: var(--accent-ink); }
+.form label { display: block; margin: 0 0 12px; font-weight: 600; font-size: .95rem; }
+.form label small { font-weight: 400; color: var(--muted); }
+.form input, .form textarea, select { display: block; width: 100%; margin-top: 4px; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.formerr { color: var(--err); font-size: .92rem; }
+.pill { display: inline-block; font-size: .8rem; font-weight: 600; padding: 2px 10px; border-radius: 99px; background: #f3ece1; color: var(--accent); margin-top: 4px; }
+.code { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .08em; margin-top: 4px; }
+.copyhead { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 8px; }
+.cover.small { width: 84px; flex: none; border-radius: 8px; overflow: hidden; }
+.cover.small img { opacity: 1; }
+#actions .btn, .lend .btn { margin-top: 10px; }
+.history { margin: 0; padding-left: 1.2em; }
+.history li { margin: 6px 0; }
+.history small { display: block; color: var(--muted); }
+.loans { list-style: none; margin: 0; padding: 0; }
+.loan .loanhead { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.loan .lt { font-weight: 700; color: var(--ink); }
+.loan blockquote { margin: 8px 0; padding-left: 10px; border-left: 3px solid var(--line); color: var(--muted); }
+.loan .address { background: #faf6ef; border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; margin-top: 8px; }
+.loan .address small { color: var(--muted); }
+.pre { white-space: pre-line; }
+.loan .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.loan .actions .btn { width: auto; flex: 1 1 auto; padding: 10px 14px; font-size: .95rem; }
+.empty.small { padding: 8px 0; text-align: left; }
+.book.tap { cursor: pointer; }
+.book .lendtag { font-size: .75rem; font-weight: 600; color: var(--accent); padding: 0 10px 8px; }
+.lend .copyrow { border-top: 1px solid var(--line); padding: 10px 0; }
+.lend .copyrow:first-of-type { border-top: 0; }
+header.top h1 { white-space: nowrap; }
+@media (max-width: 520px) { header.top:has(.acct) .tag { display: none; } }
+.lend a.code { color: var(--accent); }

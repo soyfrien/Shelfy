@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Shelfy.Domain;
+using Shelfy.Features.Common.Email;
 using Shelfy.Features.Recognition;
 using Shelfy.Features.Recognition.Resolution;
 using Shelfy.Features.Recognition.Worker;
@@ -34,6 +35,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public FakeBookResolver Resolver { get; } = new();
     public FakeBookSearch Search { get; } = new();
+    public FakeMailer Mailer { get; } = new();
     public string PhotoFolder => _photos;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -55,6 +57,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<IBookResolver>(Resolver);
             services.RemoveAll<IBookSearch>();
             services.AddSingleton<IBookSearch>(Search);
+            services.RemoveAll<IMailer>();
+            services.AddSingleton<IMailer>(Mailer);
         });
     }
 
@@ -90,5 +94,39 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 Directory.Delete(_photos, recursive: true);
             }
         }
+    }
+}
+
+/// <summary>Keeps every email instead of sending it, so tests can follow the confirmation link.</summary>
+public sealed class FakeMailer : IMailer
+{
+    private readonly List<MailMessage> _sent = new();
+
+    public IReadOnlyList<MailMessage> Sent
+    {
+        get { lock (_sent) { return _sent.ToList(); } }
+    }
+
+    public bool Fail { get; set; }
+
+    public Task SendAsync(MailMessage message, CancellationToken ct = default)
+    {
+        if (Fail)
+        {
+            throw new InvalidOperationException("SMTP is down.");
+        }
+
+        lock (_sent) { _sent.Add(message); }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The confirmation link (path and query) in the last email sent to this address.</summary>
+    public string ConfirmLink(string to)
+    {
+        var body = Sent.Last(m => m.To == to).Body;
+        var start = body.IndexOf("/api/account/confirm-email?", StringComparison.Ordinal);
+        Assert.True(start >= 0, "No confirmation link in the email.");
+        var end = body.IndexOfAny(new[] { '\n', ' ' }, start);
+        return end < 0 ? body[start..] : body[start..end];
     }
 }

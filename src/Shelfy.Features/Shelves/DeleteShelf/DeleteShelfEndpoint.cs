@@ -11,6 +11,7 @@ public static class DeleteShelfEndpoint
     {
         app.MapDelete("/api/shelves/{shelfId:guid}", async (Guid shelfId, DeleteShelfHandler handler, CancellationToken ct) =>
                 (await handler.HandleAsync(shelfId, ct)).ToHttpResult(_ => Results.NoContent()))
+            .AddEndpointFilter<ShelfOwnerFilter>()
             .WithName("DeleteShelf")
             .WithTags("Shelves")
             .Produces(StatusCodes.Status204NoContent);

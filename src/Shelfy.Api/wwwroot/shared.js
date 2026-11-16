@@ -36,6 +36,14 @@
     return li;
   }
 
+  // A small line under the title (lending status, ADR-012). Empty text removes it.
+  function setTag(li, text) {
+    var tag = li.querySelector('.lendtag');
+    if (!text) { if (tag) tag.remove(); return; }
+    if (!tag) { tag = document.createElement('div'); tag.className = 'lendtag'; li.appendChild(tag); }
+    tag.textContent = text;
+  }
+
   // Put text into el, with the parts that match the search words wrapped in <mark>. Text nodes only, never innerHTML.
   function setMarked(el, text, toks) {
     el.textContent = '';
@@ -167,8 +175,16 @@
         var old = new Map(items.map(function (i) { return [i.id, i]; }));
         items = (books || []).map(function (b) {
           var id = b.bookId || (b.title + '|' + b.author), prev = old.get(id);
-          if (prev) { prev.book = b; return prev; }
-          return { id: id, book: b, li: bookCard(b) };
+          var it = prev || { id: id, book: b, li: bookCard(b) };
+          it.book = b;
+          if (o.onBookTap && !it.tapReady) {        // lending (ADR-012): tap a book to borrow / reserve / lend it
+            it.tapReady = true;
+            it.li.classList.add('tap'); it.li.tabIndex = 0; it.li.setAttribute('role', 'button');
+            it.li.addEventListener('click', function () { o.onBookTap(it.book, it.li); });
+            it.li.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onBookTap(it.book, it.li); } });
+          }
+          setTag(it.li, b.lendLabel);
+          return it;
         });
         ul.textContent = '';
         apply();

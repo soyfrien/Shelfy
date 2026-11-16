@@ -4,6 +4,7 @@
 (function () {
   'use strict';
   var KEY_USER = 'shelfy.userId', KEY_SHELF = 'shelfy.shelfId';
+  var NEW_SHELF = 'new';   // KEY_SHELF value after "Start a new, empty shelf": the next photo makes a new shelf
   var MAX_UPLOAD = 20 * 1024 * 1024;
   var POLL_FAST_MS = 1500, POLL_SLOW_MS = 2500, POLL_ERR_MAX_MS = 8000;
   var POLL_LIMIT_BASE_MS = 3 * 60 * 1000, POLL_LIMIT_PER_PART_MS = 90 * 1000;   // overall patience: 3 min + 90 s per part
@@ -66,13 +67,34 @@
   }
   function createShelf() {
     function make(userId) { return api('POST', '/api/shelves', { userId: userId }); }
+    // Signed in (ADR-012): the new shelf belongs to the account, so its books can be lent. Otherwise an anonymous guest as before.
+    return window.ShelfyAccount.me().then(function (me) {
+      // Refresh the cached account so its shelf list includes the new one (otherwise the next photo would start yet another shelf).
+      if (me) return make(me.id).then(function (s) { ls(KEY_SHELF, s.id); return window.ShelfyAccount.me(true).then(function () { return s.id; }); });
+      return createGuestShelf(make);
+    });
+  }
+  function createGuestShelf(make) {
     var uid = ls(KEY_USER);
     var p = uid ? make(uid).catch(function (e) { if (e.status === 404) return createUser().then(make); throw e; }) : createUser().then(make);
     return p.then(function (s) { ls(KEY_SHELF, s.id); return s.id; });
   }
   // Reuse the last shelf if it still exists, otherwise make a new one.
   function ensureShelf() {
-    var id = ls(KEY_SHELF);
+    return window.ShelfyAccount.me().then(function (me) {
+      var id = ls(KEY_SHELF);
+      if (id === NEW_SHELF) id = null;      // "Start a new, empty shelf" was chosen: make one
+      // Signed in: a selected shelf must be one of the account's own (a guest shelf from before sign-in can't lend its books).
+      // With nothing selected yet (a new device), continue the account's first shelf.
+      else if (me) {
+        var mine = (me.shelves || []).map(function (s) { return s.id; });
+        if (!id || mine.indexOf(id) < 0) { id = mine[0] || null; if (id) ls(KEY_SHELF, id); }
+      }
+      return ensureShelfId(id);
+    });
+  }
+  function currentShelf() { var id = ls(KEY_SHELF); return id === NEW_SHELF ? null : id; }
+  function ensureShelfId(id) {
     if (!id) return createShelf();
     return api('GET', '/api/shelves/' + id).then(function () { return id; }, function (e) {
       if (e.status === 404) return createShelf();
@@ -368,19 +390,19 @@
   }
   els.toggleHidden.addEventListener('click', function () {
     showLowQuality = !showLowQuality;
-    var id = ls(KEY_SHELF);
+    var id = currentShelf();
     if (id) loadUnmatched(id, ++unmatchedSeq);
   });
 
   // ---- tap to fix (ADR-011): the bottom sheet lives in fix.js ----
   function openFix(item, li) {
-    var id = ls(KEY_SHELF);
+    var id = currentShelf();
     if (!id || !window.ShelfyFix) return;
     if (busy) { window.ShelfyFix.toast('Wait until the photo has been read, then tap the spine again.'); return; }
     window.ShelfyFix.open(id, item, { onChanged: function () { refreshAfterFix(id); } }, li);
   }
   function refreshAfterFix(shelfId) {
-    if (ls(KEY_SHELF) !== shelfId) return;
+    if (currentShelf() !== shelfId) return;
     var seq = ++unmatchedSeq;
     api('GET', '/api/shelves/' + shelfId).then(function (shelf) {
       var books = shelf.books || [];
@@ -391,7 +413,7 @@
   }
 
   function loadExisting() {
-    var id = ls(KEY_SHELF);
+    var id = currentShelf();
     if (!id) return;
     api('GET', '/api/shelves/' + id).then(function (shelf) {
       // Same layout as after an upload: the shelf (with its search box) first; "Add another photo" is under it.
@@ -442,7 +464,7 @@
   els.file.addEventListener('change', onFile);
   els.newShelf.addEventListener('click', function () {
     if (!confirm('Start a new, empty shelf? Your old shelf keeps its link.')) return;
-    ls(KEY_SHELF, null);
+    ls(KEY_SHELF, NEW_SHELF);
     search.reset(); search.setBooks([]); search.setUnmatched([]); setHiddenNote(0);
     show(els.result, false);
     show(els.pick, true);
@@ -451,7 +473,7 @@
   // ---- clear shelf: "Hide" (soft, default) or "Delete everything" (hard), see ADR-010 ----
   var clearing = false, clearFocus = null;
   function openClear() {
-    if (busy || !ls(KEY_SHELF)) return;
+    if (busy || !currentShelf()) return;
     show(els.clearError, false); clearFocus = document.activeElement;
     setClearBusy(false);
     show(els.clearModal, true);
@@ -466,7 +488,7 @@
     clearing = on; els.hideBtn.disabled = on; els.deleteBtn.disabled = on; els.cancelClear.disabled = on;
   }
   function clearShelf(hard) {
-    var id = ls(KEY_SHELF);
+    var id = currentShelf();
     if (!id || clearing) return;
     setClearBusy(true); show(els.clearError, false);
     var req = hard ? api('DELETE', '/api/shelves/' + id) : api('POST', '/api/shelves/' + id + '/hide');

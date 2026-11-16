@@ -165,3 +165,42 @@ Deployed 2026-10-25 (box/NY time): migration first (4 to 5 migrations), then the
 (live: "Nuromanzir | William Gibson" now suggests Neuromancer first, 0.885, instead of any Gibson book). Live result on a TEST shelf: the headless-Chrome check tapped the garbled spine, picked
 Neuromancer, the book joined the shelf and the spine left the list. The same photo on a second test shelf then auto-matched with `matchSource` `Memory` and an empty unmatched list.
 Both test shelves, both test guests, the two `UserCorrections` rows and the test Neuromancer book were removed afterwards. Suggestions take about 8 seconds live (up to five catalog lookups in sequence).
+
+## 11. Accounts, copies and lending (ADR-012) — not deployed yet
+
+Adds the migration `AddAccountsAndLending`: the ASP.NET Core Identity tables (`AspNetUsers`, `AspNetRoles`, `AspNetUserClaims`, `AspNetUserLogins`,
+`AspNetUserTokens`, `AspNetUserRoles`, `AspNetRoleClaims`), `Copies`, `CopyMovements`, `Loans` and the nullable column `Users.MailingAddress`.
+Purely additive: the previous build runs fine against it, so the order is the usual one. Checked on a scratch PostgreSQL 12.22: the old schema plus a guest
+and a shelf, then the new `db/schema.idempotent.sql` on top (data kept), then the same script again (no-op).
+
+1. Back up first: `pg_dump -h localhost -U shelfy -d shelfy -Fc -f /var/backups/shelfy-before-adr012.dump` (the tables now hold accounts and addresses).
+2. Apply `db/schema.idempotent.sql` (6 to 7 migrations).
+3. Install the new unit: `deploy/shelfy.service` adds `Environment=DataProtection__KeysPath=/var/lib/shelfy/dp-keys` (under the existing `StateDirectory`, so
+   writable by the service user despite `ProtectSystem`). Without it the keys live in memory and everyone is signed out on each restart.
+   `install -m 644 deploy/shelfy.service /etc/systemd/system/shelfy.service && systemctl daemon-reload`.
+4. Deploy the full build (not a delta: `Shelfy.Infrastructure` now references `Microsoft.AspNetCore.Identity.EntityFrameworkCore`, so there are new DLLs
+   and a new `Shelfy.Api.deps.json`). New `wwwroot` files: `account.js`, `signin.html`/`.js`, `loans.html`/`.js`, `copy.html`/`.js`; changed: `app.js`,
+   `shelf.js`, `shelf.html`, `index.html`, `shared.js`, `style.css`.
+5. Optional: `Lending__PublicBaseUrl=https://shelfy.ppdac.ltd` pins the URL printed in QR labels (otherwise the request's scheme and host are used,
+   which is already right behind nginx with `X-Forwarded-Proto`).
+
+6. **Email sender (required for lending).** Borrowing, reserving and approving need a confirmed email, so production needs a real sender, or nobody
+   can borrow. Use Azure Communication Services Email (Exchange Online is retiring password SMTP sign-in): in the `cosmic` subscription create an
+   Email Communication Service with an Azure managed domain (or verify `ppdac.ltd` with the TXT/SPF/DKIM records it lists, added in Squarespace),
+   create a Communication Service and connect the domain to it. Then in `/etc/shelfy/shelfy.env` (root-only, never in git):
+   `Email__Provider=Acs`, `Email__AcsConnectionString=<the Communication Service's connection string>`, `Email__From=DoNotReply@<the connected domain>`,
+   `Email__PublicBaseUrl=https://shelfy.ppdac.ltd`. (`Email__Provider=Smtp` with `Email__SmtpHost/SmtpPort/SmtpUser/SmtpPassword/From` also works with
+   any relay that still allows a login.) Without these settings the confirmation email only goes to the service log (`journalctl -u shelfy`).
+
+The only new secret is the email connection string (step 6). The cookie is `Secure` because requests arrive as HTTPS through nginx (`UseForwardedHeaders`). Rollback: `/opt/shelfy.old` works with the new
+tables (it ignores them); copies and loans created meanwhile stay in the database.
+
+Behaviour change to check: shelves created while signed in can only be changed (upload, fix, hide, delete) by their owner; guest shelves are unchanged.
+
+Verify after deploying, with TEST accounts and a TEST shelf only (`test+owner@…`, `test+borrower@…`): register both and open the confirmation link each one gets by email; as the owner create a shelf from the home page
+and upload `python3 tools/make-test-shelf.py` output; on `/s/{id}` tap a book, **Lend this book**, open **Print the QR label** (scan it with a phone: it opens `/c/{CODE}`);
+as the borrower (another browser) **Ask to borrow**; as the owner **Approve** and **I mailed it** on `/loans.html` (the borrower's address shows only now); as the
+borrower open the label URL and tap **I received this** (the copy moves to the borrower's shelf and the journey shows it); then **I mailed it back**, and the owner taps
+**I got it back** on the label page. Anonymous: `GET /api/loans` is 401, `GET /api/copies/by-code/{code}` shows no addresses. Remove the test data afterwards:
+`DELETE FROM "Loans" WHERE ...; DELETE FROM "Copies" WHERE ...;` (movements cascade), delete the test shelves with `DELETE /api/shelves/{id}`, then the test
+`AspNetUsers` rows (their `Users` rows can then be deleted; the account FK cascades from `Users`).

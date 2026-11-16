@@ -19,6 +19,7 @@ public static class FixSpineEndpoints
         app.MapPost("/api/shelves/{shelfId:guid}/spines/{spineId:guid}/resolve",
                 async (Guid shelfId, Guid spineId, ResolveSpineRequest? body, ResolveSpineHandler handler, CancellationToken ct) =>
                     (await handler.HandleAsync(shelfId, spineId, body, ct)).ToHttpResult())
+            .AddEndpointFilter<ShelfOwnerFilter>()
             .WithName("ResolveSpine").WithTags("Recognition")
             .Produces<ResolveSpineResponse>().ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
@@ -26,6 +27,7 @@ public static class FixSpineEndpoints
         app.MapPost("/api/shelves/{shelfId:guid}/spines/{spineId:guid}/dismiss",
                 async (Guid shelfId, Guid spineId, DismissSpineHandler handler, CancellationToken ct) =>
                     (await handler.HandleAsync(shelfId, spineId, ct)).ToHttpResult())
+            .AddEndpointFilter<ShelfOwnerFilter>()
             .WithName("DismissSpine").WithTags("Recognition")
             .Produces<DismissSpineResponse>().ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status409Conflict);
 

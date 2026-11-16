@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8a4b2a">
+<title>Sign in · Shelfy</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap narrow">
+  <header class="top"><a href="/"><h1>📚 Shelfy</h1></a><span class="tag">An internet library</span></header>
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab on" id="tabIn" role="tab">Sign in</button>
+    <button type="button" class="tab" id="tabUp" role="tab">Create account</button>
+  </div>
+  <form class="card form" id="formIn" autocomplete="on">
+    <label>Email <input type="email" name="email" autocomplete="username" required></label>
+    <label>Password <input type="password" name="password" autocomplete="current-password" required></label>
+    <button class="btn" type="submit">Sign in</button>
+    <p class="formerr hidden" role="alert"></p>
+  </form>
+  <form class="card form hidden" id="formUp" autocomplete="on">
+    <label>Your name (shown to other readers) <input name="displayName" maxlength="100" required></label>
+    <label>Email <input type="email" name="email" autocomplete="username" required></label>
+    <label>Password <small>(8 characters or more)</small> <input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+    <label>City <small>(optional, shown)</small> <input name="city" maxlength="100"></label>
+    <label>Mailing address <small>(private: only shown to the other person of a loan once it is approved)</small>
+      <textarea name="mailingAddress" rows="3" maxlength="500" autocomplete="street-address"></textarea></label>
+    <button class="btn" type="submit">Create account</button>
+    <p class="formerr hidden" role="alert"></p>
+  </form>
+  <footer>Shelfy is an early test.</footer>
+</div>
+<script src="/signin.js"></script>
+</body>
+</html>

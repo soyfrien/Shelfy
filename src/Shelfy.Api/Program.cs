@@ -30,6 +30,10 @@ app.UseStaticFiles(new StaticFileOptions
     OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "no-cache"
 });
 
+// Accounts (ADR-012): Identity cookie for the pages and the API.
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapHealthChecks("/health");
 app.MapShelfyFeatures();
 

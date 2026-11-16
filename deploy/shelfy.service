@@ -16,6 +16,8 @@ Environment=DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 # Uploaded photos (recognition pipeline). StateDirectory creates /var/lib/shelfy owned by the service user.
 StateDirectory=shelfy
 Environment=Storage__LocalPath=/var/lib/shelfy/photos
+# Keys that sign the sign-in cookie (ADR-012); kept so sign-ins survive restarts and redeploys.
+Environment=DataProtection__KeysPath=/var/lib/shelfy/dp-keys
 Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
 # Root-only file (chmod 600) containing: ConnectionStrings__ShelfyDb=Host=localhost;Port=5432;Database=shelfy;Username=shelfy;Password=<PASSWORD>
 EnvironmentFile=/etc/shelfy/shelfy.env

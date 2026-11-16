@@ -61,6 +61,7 @@ public static class UploadShelfPhotoEndpoint
                         new UploadShelfPhotoRequest(shelfId, file.FileName, file.Length, content, batchId, part, parts), ct);
                     return result.ToHttpResult(r => Results.Accepted(UploadShelfPhotoHandler.StatusUrl(r.JobId), r));
                 })
+            .AddEndpointFilter<ShelfOwnerFilter>()
             .WithName("UploadShelfPhoto")
             .WithTags("Recognition")
             .DisableAntiforgery() // API clients use bearer tokens (ADR-006), not cookies; there is no browser form to protect.
