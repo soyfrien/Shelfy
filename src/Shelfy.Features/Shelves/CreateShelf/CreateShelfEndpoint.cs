@@ -9,8 +9,8 @@ public static class CreateShelfEndpoint
 {
     public static IEndpointRouteBuilder MapCreateShelf(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/shelves", async (CreateShelfRequest request, CreateShelfHandler handler, CancellationToken ct) =>
-                (await handler.HandleAsync(request, ct))
+        app.MapPost("/api/shelves", async (CreateShelfRequest request, System.Security.Claims.ClaimsPrincipal user, CreateShelfHandler handler, CancellationToken ct) =>
+                (await handler.HandleAsync(request, ct, user.UserId()))
                     .ToHttpResult(shelf => Results.Created($"/api/shelves/{shelf.Id}", shelf)))
             .WithName("CreateShelf")
             .WithTags("Shelves")

@@ -1,20 +1,23 @@
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Shelfy.Features.Users.Account;
 using Shelfy.Features.Users.CreateGuest;
 
 namespace Shelfy.Features.Users;
 
 /// <summary>
-/// Users module. v1 has only anonymous guests (for the web UI); real slices (e.g. GetCurrentUser, linking the
-/// Entra External ID subject) are added here after the identity setup is specified (ADR-006).
+/// Users module: anonymous guests (the original web UI flow) and accounts (email + password, ADR-012).
 /// </summary>
 public static class UsersModule
 {
-    public static IServiceCollection AddUsersModule(this IServiceCollection services)
+    public static IServiceCollection AddUsersModule(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddShelfyAuth(configuration);
         services.AddScoped<CreateGuestHandler>();
+        services.AddScoped<AccountHandler>();
         return services;
     }
 
-    public static IEndpointRouteBuilder MapUsersModule(this IEndpointRouteBuilder app) => app.MapCreateGuest();
+    public static IEndpointRouteBuilder MapUsersModule(this IEndpointRouteBuilder app) => app.MapCreateGuest().MapAccount();
 }

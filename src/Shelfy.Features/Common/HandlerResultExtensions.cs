@@ -13,6 +13,8 @@ public static class HandlerResultExtensions
             HandlerStatus.Conflict => Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status409Conflict),
             HandlerStatus.TooLarge => Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status413PayloadTooLarge),
             HandlerStatus.UnsupportedMediaType => Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status415UnsupportedMediaType),
+            HandlerStatus.Unauthorized => Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status401Unauthorized),
+            HandlerStatus.Forbidden => Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status403Forbidden),
             _ => Results.BadRequest(new { error = result.Error })
         };
 }

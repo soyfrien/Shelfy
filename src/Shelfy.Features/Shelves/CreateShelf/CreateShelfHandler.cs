@@ -7,7 +7,9 @@ namespace Shelfy.Features.Shelves.CreateShelf;
 
 public class CreateShelfHandler(ShelfyDbContext db)
 {
-    public async Task<HandlerResult<CreateShelfResponse>> HandleAsync(CreateShelfRequest request, CancellationToken ct = default)
+    /// <param name="callerId">The signed-in user, if any. A shelf for a registered account can only be made by that account (ADR-012);
+    /// anonymous guests keep working without sign-in.</param>
+    public async Task<HandlerResult<CreateShelfResponse>> HandleAsync(CreateShelfRequest request, CancellationToken ct = default, Guid? callerId = null)
     {
         if (request.UserId == Guid.Empty)
         {
@@ -18,6 +20,11 @@ public class CreateShelfHandler(ShelfyDbContext db)
         if (!userExists)
         {
             return HandlerResult<CreateShelfResponse>.NotFound("User not found.");
+        }
+
+        if (callerId != request.UserId && await db.Accounts.AnyAsync(a => a.Id == request.UserId, ct))
+        {
+            return HandlerResult<CreateShelfResponse>.Forbidden("Sign in as this user to create a shelf for them.");
         }
 
         var shelf = new Shelf { Id = Guid.NewGuid(), UserId = request.UserId };
