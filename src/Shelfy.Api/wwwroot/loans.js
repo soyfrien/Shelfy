@@ -20,7 +20,8 @@
     if (l.message) li.appendChild(el('blockquote', null, l.message));
     if (l.shipTo) {
       var ship = el('div', 'address');
-      ship.appendChild(el('small', null, (l.role === 'borrower' ? 'Return address' : 'Mail it to') + ' (private)'));
+      var toMail = l.role !== 'borrower' && l.status === 'Approved';
+      ship.appendChild(el('small', null, (l.role === 'borrower' ? 'Owner’s address, for the return' : toMail ? 'Mail it to' : 'Borrower’s address') + ' (private)'));
       ship.appendChild(el('div', null, l.shipToName));
       ship.appendChild(el('div', 'pre', l.shipTo));
       li.appendChild(ship);
