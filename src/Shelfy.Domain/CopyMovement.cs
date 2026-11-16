@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace Shelfy.Domain;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CopyMovementKind
 {
     /// <summary>The copy was registered on its owner's shelf.</summary>

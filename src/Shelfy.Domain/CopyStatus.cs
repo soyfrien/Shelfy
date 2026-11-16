@@ -1,6 +1,9 @@
+using System.Text.Json.Serialization;
+
 namespace Shelfy.Domain;
 
 /// <summary>Where a physical <see cref="Copy"/> is in its lending life (ADR-012).</summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum CopyStatus
 {
     /// <summary>At its owner's home shelf and free to borrow.</summary>

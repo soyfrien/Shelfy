@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Shelfy.Domain;
 
 /// <summary>
@@ -7,6 +9,7 @@ namespace Shelfy.Domain;
 /// lets the current borrower pass the copy along; the earlier loan then ends as PassedOn once the copy is mailed on.
 /// Declined, Cancelled, Returned and PassedOn are terminal.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum LoanStatus
 {
     Waitlisted,
