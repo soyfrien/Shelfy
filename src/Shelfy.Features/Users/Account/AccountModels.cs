@@ -9,4 +9,4 @@ public record UpdateProfileRequest(string? DisplayName, string? City, string? Ma
 public record MyShelfDto(Guid Id, int BookCount);
 
 /// <summary>The signed-in user's own view. This is the only response that contains their own mailing address.</summary>
-public record MeResponse(Guid Id, string Email, string DisplayName, string City, string? MailingAddress, IReadOnlyList<MyShelfDto> Shelves);
+public record MeResponse(Guid Id, string Email, bool EmailConfirmed, string DisplayName, string City, string? MailingAddress, IReadOnlyList<MyShelfDto> Shelves);

@@ -11,6 +11,14 @@
   $('tabIn').onclick = function () { tab(false); };
   $('tabUp').onclick = function () { tab(true); };
   if (location.hash === '#register') tab(true);
+  var confirmed = new URLSearchParams(location.search).get('confirmed');
+  if (confirmed) {
+    var note = document.createElement('p'); note.className = 'notice';
+    note.textContent = confirmed === '1'
+      ? 'Your email is confirmed. You can borrow and lend books now.'
+      : 'That confirmation link didn’t work. Sign in and use “Send it again” for a fresh one.';
+    var tabs = document.querySelector('.tabs'); tabs.parentNode.insertBefore(note, tabs);
+  }
 
   function submit(form, url) {
     form.addEventListener('submit', function (e) {

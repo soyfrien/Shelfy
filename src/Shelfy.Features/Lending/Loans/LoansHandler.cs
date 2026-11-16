@@ -31,6 +31,11 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
             return HandlerResult<LoanDto>.NotFound("Copy not found.");
         }
 
+        if (!await HasConfirmedEmailAsync(me.Value, ct))
+        {
+            return HandlerResult<LoanDto>.Invalid(ConfirmEmailFirst);
+        }
+
         if (!reserve && !await HasAddressAsync(me.Value, ct))
         {
             return HandlerResult<LoanDto>.Invalid("Add your mailing address to your profile first, so the owner can send you the book.");
@@ -78,6 +83,11 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
             switch (action)
             {
                 case LendingActions.Approve:
+                    if (!await HasConfirmedEmailAsync(me.Value, ct))
+                    {
+                        return HandlerResult<LoanDto>.Invalid(ConfirmEmailFirst);
+                    }
+
                     if (!await HasAddressAsync(me.Value, ct))
                     {
                         return HandlerResult<LoanDto>.Invalid("Add your mailing address to your profile first, so the book can come back to you.");
@@ -271,6 +281,12 @@ public class LoansHandler(ShelfyDbContext db, TimeProvider clock)
     }
 
     private static bool IsParty(Loan loan, Guid me) => loan.BorrowerId == me || loan.OwnerId == me || loan.SenderId == me;
+
+    public const string ConfirmEmailFirst = "Confirm your email first: open the link we emailed you when you signed up.";
+
+    /// <summary>Borrowing, reserving and approving need a confirmed email (Louis, Nov 15, 2026; ADR-012).</summary>
+    private Task<bool> HasConfirmedEmailAsync(Guid userId, CancellationToken ct) =>
+        db.Accounts.AnyAsync(a => a.Id == userId && a.EmailConfirmed, ct);
 
     private Task<bool> HasAddressAsync(Guid userId, CancellationToken ct) =>
         db.Users.AnyAsync(u => u.Id == userId && u.MailingAddress != null && u.MailingAddress != "", ct);

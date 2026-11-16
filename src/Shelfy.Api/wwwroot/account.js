@@ -43,6 +43,18 @@
         var loans = el('a', null, 'My loans'); loans.href = '/loans.html';
         var out = el('button', 'link', 'Sign out'); out.type = 'button'; out.onclick = signOut;
         nav.appendChild(loans); nav.appendChild(out);
+        if (!u.emailConfirmed) {
+          // Borrowing, reserving and approving need a confirmed email.
+          var bar = el('p', 'notice confirmbar', 'Confirm your email to borrow and lend books. We sent a link to ' + u.email + '. ');
+          var again = el('button', 'link', 'Send it again'); again.type = 'button';
+          again.onclick = function () {
+            again.disabled = true;
+            api('POST', '/api/account/confirm-email/resend').then(function () { again.textContent = 'Sent. Check your inbox.'; })
+              .catch(function (x) { again.textContent = x.message; });
+          };
+          bar.appendChild(again);
+          header.parentNode.insertBefore(bar, header.nextSibling);
+        }
       } else {
         var a = el('a', null, 'Sign in'); a.href = signInUrl(); nav.appendChild(a);
       }

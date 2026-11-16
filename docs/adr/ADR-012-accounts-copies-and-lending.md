@@ -45,14 +45,20 @@ Two things the model had no room for:
   401/403 instead of redirecting. No bearer tokens yet: the only client is the same-origin web UI. When the MAUI app arrives, add
   Identity bearer tokens (or Entra, ADR-006) next to the cookie; the handlers only read the user id from the principal.
 - CSRF: SameSite=Lax keeps the cookie off cross-site POSTs, and JSON bodies cannot be sent cross-site without a CORS preflight (no CORS is enabled).
-- Passwords: at least 8 characters, no composition rules; lockout for 10 minutes after 8 failures. Email is not confirmed yet (no mail sender).
+- Passwords: at least 8 characters, no composition rules; lockout for 10 minutes after 8 failures.
+- **Confirmed email (decided by Louis, Nov 15, 2026).** Registering emails a link (`GET /api/account/confirm-email?userId=&code=`, an Identity
+  token, works without being signed in, then redirects to `/signin.html?confirmed=1|0`). Borrowing, reserving and approving a loan answer 400
+  until the email is confirmed; approving is included because it reveals the borrower's address. Listing a copy does not need it.
+  `POST /api/account/confirm-email/resend` (signed in, once a minute). `GET /me` has `emailConfirmed`; pages show a bar with "Send it again".
+  Mail goes through `IMailer`: `Email:Provider=Smtp` (`Email:SmtpHost/SmtpPort/SmtpUser/SmtpPassword/From`, STARTTLS) or `Log` (default, writes
+  the email to the log; development only). If sending fails, registration still succeeds and the person can resend.
 - Endpoints: `POST /api/account/register`, `/login`, `/logout`, `GET /api/account/me` (the only response with your own address, plus your shelves),
   `PUT /api/account/profile`.
 - Data-protection keys (they sign the cookie) persist to `DataProtection:KeysPath` when set, so sign-ins survive restarts.
 
-### 3. Anonymous shelves
+### 3. Anonymous shelves ("dark shelves")
 
-**Left as they are, not claimable** (for now). Guest shelves keep working without sign-in exactly as before (upload, fix, search, hide,
+**Left as they are, never claimable** (decided by Louis, Nov 15, 2026: they become *dark shelves*, to do something special with later). Guest shelves keep working without sign-in exactly as before (upload, fix, search, hide,
 delete). A shelf created while signed in belongs to the account, and changing it (upload photos, tap to fix, hide, delete) needs its owner
 (`ShelfOwnerFilter`: 401 anonymous, 403 someone else); reads stay public. Creating a shelf for a user who has an account needs that account.
 Only account shelves can lend. Claiming a guest shelf was left out because the guest id is public (`GET /api/shelves/{id}` returns `userId`),
@@ -123,8 +129,8 @@ Responses carry `actions`: the steps the caller can take now (for buttons; the s
   previous build runs against the new schema, so apply the SQL first. Verified on PostgreSQL 12.
 - ADR-006 (Entra External ID) is deferred, not rejected: Entra can be added as an external login on top of Identity.
 - No notifications yet: people see requests on "My loans". Email (requests, approvals, "it's in the mail") is the obvious next step, and
-  email confirmation and password reset need a mail sender too.
+  password reset can now reuse `IMailer`.
 - Shipping costs, lost or damaged books, due dates and reminders are out of scope. `Loan` has the timestamps to add due dates later.
 - The shelf page still lists `ShelfBook`s; copies borrowed from someone else appear as extra "Borrowed from …" cards.
-- Open questions for the product owner: default for pass-along (now off per copy), whether guest shelves should become claimable, and whether
-  borrowing should require a confirmed email.
+- Decided by Louis on Nov 15, 2026: pass-along stays **off by default** per copy; guest shelves stay unclaimable (dark shelves); borrowing
+  needs a confirmed email.

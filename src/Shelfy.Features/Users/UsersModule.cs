@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Shelfy.Features.Common.Email;
 using Shelfy.Features.Users.Account;
 using Shelfy.Features.Users.CreateGuest;
 
@@ -16,6 +17,17 @@ public static class UsersModule
         services.AddShelfyAuth(configuration);
         services.AddScoped<CreateGuestHandler>();
         services.AddScoped<AccountHandler>();
+        services.AddMemoryCache();
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
+        if (string.Equals(configuration["Email:Provider"], "Smtp", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IMailer, SmtpMailer>();
+        }
+        else
+        {
+            services.AddSingleton<IMailer, LogMailer>();
+        }
+
         return services;
     }
 

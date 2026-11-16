@@ -33,13 +33,84 @@ public class LendingEndpointTests : IDisposable
         return JsonDocument.Parse(string.IsNullOrEmpty(text) ? "null" : text).RootElement.Clone();
     }
 
-    private async Task<(HttpClient Client, Guid Id)> SignUpAsync(string name, string? address = "1 Main St\nBrooklyn NY")
+    private async Task<(HttpClient Client, Guid Id)> SignUpAsync(string name, string? address = "1 Main St\nBrooklyn NY", bool confirm = true)
     {
         var c = NewClient();
+        var email = $"{name.ToLowerInvariant()}-{Guid.NewGuid():N}@example.com";
         var r = await c.PostAsJsonAsync("/api/account/register",
-            new { email = $"{name.ToLowerInvariant()}-{Guid.NewGuid():N}@example.com", password = "correct horse", displayName = name, mailingAddress = address });
+            new { email, password = "correct horse", displayName = name, mailingAddress = address });
         Assert.Equal(HttpStatusCode.Created, r.StatusCode);
+        if (confirm)
+        {
+            var link = await NewClient().GetAsync(_factory.Mailer.ConfirmLink(email));
+            Assert.Equal("/signin.html?confirmed=1", link.Headers.Location?.OriginalString);
+        }
+
         return (c, (await Json(r)).GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task Registering_emails_a_link_that_confirms_the_email()
+    {
+        var c = NewClient();
+        var email = $"new-{Guid.NewGuid():N}@example.com";
+        var reg = await Json(await c.PostAsJsonAsync("/api/account/register", new { email, password = "correct horse", displayName = "Wanjiru" }));
+        Assert.False(reg.GetProperty("emailConfirmed").GetBoolean());
+        var mail = _factory.Mailer.Sent.Single(m => m.To == email);
+        Assert.Contains("Hi Wanjiru", mail.Body);
+
+        var link = _factory.Mailer.ConfirmLink(email);
+        var tampered = link[..^3] + (link.EndsWith("AAA") ? "BBB" : "AAA");
+        Assert.Equal("/signin.html?confirmed=0", (await NewClient().GetAsync(tampered)).Headers.Location?.OriginalString);
+        Assert.False((await Json(await c.GetAsync("/api/account/me"))).GetProperty("emailConfirmed").GetBoolean());
+
+        // The link works without being signed in (it is often opened on another device), and opening it twice is fine.
+        Assert.Equal("/signin.html?confirmed=1", (await NewClient().GetAsync(link)).Headers.Location?.OriginalString);
+        Assert.Equal("/signin.html?confirmed=1", (await NewClient().GetAsync(link)).Headers.Location?.OriginalString);
+        Assert.True((await Json(await c.GetAsync("/api/account/me"))).GetProperty("emailConfirmed").GetBoolean());
+        Assert.Equal(HttpStatusCode.Conflict, (await c.PostAsJsonAsync("/api/account/confirm-email/resend", new { })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Resending_the_confirmation_is_limited_to_once_a_minute_and_needs_sign_in()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().PostAsJsonAsync("/api/account/confirm-email/resend", new { })).StatusCode);
+        var (c, _) = await SignUpAsync("Akinyi", confirm: false);
+        // Registering just sent one, so an immediate resend is refused.
+        Assert.Equal(HttpStatusCode.Conflict, (await c.PostAsJsonAsync("/api/account/confirm-email/resend", new { })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Registration_still_works_when_the_email_cannot_be_sent()
+    {
+        _factory.Mailer.Fail = true;
+        var c = NewClient();
+        var r = await c.PostAsJsonAsync("/api/account/register", new { email = $"x-{Guid.NewGuid():N}@example.com", password = "correct horse", displayName = "Njeri" });
+        Assert.Equal(HttpStatusCode.Created, r.StatusCode);
+        Assert.False((await Json(r)).GetProperty("emailConfirmed").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Borrowing_reserving_and_approving_need_a_confirmed_email()
+    {
+        var (owner, ownerId) = await SignUpAsync("Owner");
+        var (copyId, _) = await LendableCopyAsync(owner, ownerId);
+        var (unconfirmed, _) = await SignUpAsync("Eager", confirm: false);
+
+        foreach (var action in new[] { "borrow", "reserve" })
+        {
+            var r = await unconfirmed.PostAsJsonAsync($"/api/copies/{copyId}/{action}", new { });
+            Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+            Assert.Contains("Confirm your email", (await Json(r)).GetProperty("error").GetString());
+        }
+
+        // An owner who hasn't confirmed can list a copy but can't approve a request (approving reveals the borrower's address).
+        var (lazyOwner, lazyOwnerId) = await SignUpAsync("LazyOwner", confirm: false);
+        var (lazyCopy, _) = await LendableCopyAsync(lazyOwner, lazyOwnerId);
+        var (reader, _) = await SignUpAsync("Reader");
+        var loan = await Json(await reader.PostAsJsonAsync($"/api/copies/{lazyCopy}/borrow", new { }));
+        var refused = await StepAsync(lazyOwner, loan.GetProperty("id").GetGuid(), "approve", expect: HttpStatusCode.BadRequest);
+        Assert.Contains("Confirm your email", refused.GetProperty("error").GetString());
     }
 
     /// <summary>A shelf owned by the signed-in client with one book on it.</summary>

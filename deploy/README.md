@@ -184,12 +184,19 @@ and a shelf, then the new `db/schema.idempotent.sql` on top (data kept), then th
 5. Optional: `Lending__PublicBaseUrl=https://shelfy.ppdac.ltd` pins the URL printed in QR labels (otherwise the request's scheme and host are used,
    which is already right behind nginx with `X-Forwarded-Proto`).
 
-No new secrets. The cookie is `Secure` because requests arrive as HTTPS through nginx (`UseForwardedHeaders`). Rollback: `/opt/shelfy.old` works with the new
+6. **Email sender (required for lending).** Borrowing, reserving and approving need a confirmed email, so production needs a real sender, or nobody
+   can borrow. In `/etc/shelfy/shelfy.env` (root-only, never in git):
+   `Email__Provider=Smtp`, `Email__SmtpHost=smtp.office365.com`, `Email__SmtpPort=587`, `Email__SmtpUser=<sending mailbox>`,
+   `Email__SmtpPassword=<its password>`, `Email__From=<same mailbox>`, `Email__PublicBaseUrl=https://shelfy.ppdac.ltd`.
+   With Microsoft 365 the sending mailbox needs SMTP AUTH turned on (Exchange admin center, mailbox, Manage email apps, Authenticated SMTP).
+   Any other SMTP relay works the same way. Without these settings the confirmation email only goes to the service log (`journalctl -u shelfy`).
+
+The only new secret is the SMTP password (step 6). The cookie is `Secure` because requests arrive as HTTPS through nginx (`UseForwardedHeaders`). Rollback: `/opt/shelfy.old` works with the new
 tables (it ignores them); copies and loans created meanwhile stay in the database.
 
 Behaviour change to check: shelves created while signed in can only be changed (upload, fix, hide, delete) by their owner; guest shelves are unchanged.
 
-Verify after deploying, with TEST accounts and a TEST shelf only (`test+owner@…`, `test+borrower@…`): register both; as the owner create a shelf from the home page
+Verify after deploying, with TEST accounts and a TEST shelf only (`test+owner@…`, `test+borrower@…`): register both and open the confirmation link each one gets by email; as the owner create a shelf from the home page
 and upload `python3 tools/make-test-shelf.py` output; on `/s/{id}` tap a book, **Lend this book**, open **Print the QR label** (scan it with a phone: it opens `/c/{CODE}`);
 as the borrower (another browser) **Ask to borrow**; as the owner **Approve** and **I mailed it** on `/loans.html` (the borrower's address shows only now); as the
 borrower open the label URL and tap **I received this** (the copy moves to the borrower's shelf and the journey shows it); then **I mailed it back**, and the owner taps
