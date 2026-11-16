@@ -22,7 +22,8 @@ public class GetShelfHandlerTests
         var result = await new GetShelfHandler(db).HandleAsync(new GetShelfRequest(shelf.Id));
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("Louis", result.Value!.OwnerName);
+        Assert.False(result.Value!.IsPublic);
+        Assert.Equal("Louis", result.Value.OwnerName);
         Assert.Equal(["Dune", "Foundation"], result.Value.Books.Select(b => b.Title));
         Assert.All(result.Value.Books, b => Assert.Equal(AvailabilityStatus.Private, b.Status));
     }

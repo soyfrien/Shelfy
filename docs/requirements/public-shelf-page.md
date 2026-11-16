@@ -23,7 +23,7 @@ As a reader, I want a shareable page for my shelf so that friends can see what I
 |---|---|
 | Unique shareable URL | Done: `/s/{shelfId}` (static template `wwwroot/shelf.html` plus `GET /api/shelves/{id}`) |
 | Covers, titles, authors, no sign-in | Done. Title is the placeholder when a cover is missing or slow |
-| Owner can turn sharing on or off | Not built. `Shelf.IsPublic` exists but is not enforced: every shelf is readable by its link until authentication (ADR-006) exists |
+| Owner can turn sharing on or off | Search visibility is on by a "Show my shelf in search" switch (`PATCH /api/shelves/{id}`, account owners only). A private shelf is still readable by its link (guest shelves cannot be listed in search) |
 | No availability, price or personal data | Done (the page shows covers, titles, authors only) |
 | Mobile layout and link preview | Done: responsive grid, `og:title`, `og:description`, `og:image` (first cover) filled in server-side |
 | Unknown shelf gives a not-found page | Done: 404 HTML page, also for hidden and deleted shelves |
